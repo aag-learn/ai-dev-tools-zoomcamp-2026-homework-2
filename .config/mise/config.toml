@@ -1,0 +1,7 @@
+[tools]
+
+claude = "latest"
+gh = "latest"
+jj = "latest"
+python = "latest"
+uv = "latest"
