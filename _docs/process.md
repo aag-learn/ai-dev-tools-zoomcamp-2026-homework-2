@@ -53,7 +53,7 @@ issue rather than a feature-scoped list.
 4. Create a bookmark `issue-<N>` at the current tip of `main`. Invoke software-engineer to implement it there — its commits land on that bookmark, never directly on `main`.
 5. Invoke qa-engineer to verify it, against that same bookmark's state.
 6. On FAIL, go back to step 4, passing qa-engineer's verdict and evidence as input.
-7. On PASS, re-check the acceptance criteria yourself. Push the `issue-<N>` bookmark and open a PR against `main` (`gh pr create`), linking the groomed spec and QA verdict in the description, then tell the user it's ready for review.
+7. On PASS, re-check the acceptance criteria yourself. Push the `issue-<N>` bookmark and open a PR against `main` (`gh pr create`), linking the groomed spec and QA verdict in the description as real GitHub file links (see "PR description links" below), then tell the user it's ready for review.
 8. Close the issue only once the PR is actually merged (see "Branching, review, and merging" below) — QA PASS alone is not enough to close it.
 9. Repeat until no open issues remain.
 
@@ -75,6 +75,22 @@ issue rather than a feature-scoped list.
 - If QA later finds a problem in an already-open PR, go back to
   software-engineer on the same bookmark; don't open a second PR for
   the same issue.
+
+#### PR description links
+
+Any reference to a repo file in a PR description (spec, notes, QA
+report, etc.) must be a real GitHub link that resolves and renders as
+clickable, not a bare path in backticks — GitHub does not auto-link
+plain relative paths. Use a blob URL pinned to the PR's head commit or
+bookmark, e.g.:
+
+```
+https://github.com/<org>/<repo>/blob/issue-<N>/specs/groomed/<N>-<slug>.md
+```
+
+Pin to the branch/bookmark (or a specific commit SHA), not `main` —
+`main` won't have the file yet if the PR hasn't merged. This applies
+everywhere a PR body is written, not just by the orchestrator.
 
 ### Parallel execution (opt-in)
 
