@@ -1,0 +1,375 @@
+openapi: 3.0.3
+info:
+  title: Tally API
+  version: 1.0.0
+  description: >-
+    Expense-splitter API: people, expenses, and balances for a single
+    implicit group. No authentication in v1.
+paths:
+  /people:
+    post:
+      operationId: createPerson
+      summary: Add a person
+      tags:
+        - people
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonCreate"
+      responses:
+        "201":
+          description: Person created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+    get:
+      operationId: listPeople
+      summary: List all people
+      tags:
+        - people
+      responses:
+        "200":
+          description: >-
+            All people, ordered by id ascending (insertion order)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Person"
+  /expenses:
+    post:
+      operationId: createExpense
+      summary: Add an expense, split equally among participant_ids
+      tags:
+        - expenses
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseWrite"
+      responses:
+        "201":
+          description: Expense created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: >-
+            payer_id or an entry in participant_ids does not match an
+            existing person
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      operationId: listExpenses
+      summary: List all expenses, most recent first
+      tags:
+        - expenses
+      responses:
+        "200":
+          description: >-
+            All expenses, ordered by date descending, then id descending
+            as a tiebreak for same-date expenses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Expense"
+  /expenses/{expense_id}:
+    put:
+      operationId: replaceExpense
+      summary: Edit an expense (full replace)
+      tags:
+        - expenses
+      parameters:
+        - $ref: "#/components/parameters/ExpenseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseWrite"
+      responses:
+        "200":
+          description: Expense updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+        "404":
+          description: expense_id does not exist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: >-
+            payer_id or an entry in participant_ids does not match an
+            existing person
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      operationId: updateExpense
+      summary: Partially edit an expense
+      tags:
+        - expenses
+      parameters:
+        - $ref: "#/components/parameters/ExpenseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpensePatch"
+      responses:
+        "200":
+          description: >-
+            Expense updated (full resource returned, same as PUT); an
+            empty request body ({}) is valid and is a no-op update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+        "404":
+          description: expense_id does not exist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Validation error (only applied to fields present in the body)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: >-
+            payer_id or an entry in participant_ids does not match an
+            existing person (only checked for fields present in the body)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteExpense
+      summary: Delete an expense
+      tags:
+        - expenses
+      parameters:
+        - $ref: "#/components/parameters/ExpenseId"
+      responses:
+        "204":
+          description: Expense deleted
+        "404":
+          description: expense_id does not exist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /balances:
+    get:
+      operationId: listBalances
+      summary: Each person's net position
+      tags:
+        - balances
+      responses:
+        "200":
+          description: >-
+            One entry per person currently in the group (including people
+            with zero expenses), ordered by person_id ascending. Positive
+            balance means net owed to them; negative means they net owe;
+            0 means settled.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Balance"
+components:
+  parameters:
+    ExpenseId:
+      name: expense_id
+      in: path
+      required: true
+      schema:
+        type: integer
+  schemas:
+    Person:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+      required:
+        - id
+        - name
+    PersonCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+      required:
+        - name
+    Expense:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        description:
+          type: string
+          minLength: 1
+          maxLength: 200
+        amount:
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+          description: Currency amount, rounded to 2 decimal places.
+        payer_id:
+          type: integer
+        date:
+          type: string
+          format: date
+        participant_ids:
+          type: array
+          items:
+            type: integer
+          minItems: 1
+          uniqueItems: true
+      required:
+        - id
+        - description
+        - amount
+        - payer_id
+        - date
+        - participant_ids
+    ExpenseWrite:
+      type: object
+      properties:
+        description:
+          type: string
+          minLength: 1
+          maxLength: 200
+        amount:
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+          description: Currency amount, rounded to 2 decimal places.
+        payer_id:
+          type: integer
+        date:
+          type: string
+          format: date
+        participant_ids:
+          type: array
+          items:
+            type: integer
+          minItems: 1
+          uniqueItems: true
+      required:
+        - description
+        - amount
+        - payer_id
+        - date
+        - participant_ids
+    ExpensePatch:
+      type: object
+      properties:
+        description:
+          type: string
+          minLength: 1
+          maxLength: 200
+        amount:
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+          description: Currency amount, rounded to 2 decimal places.
+        payer_id:
+          type: integer
+        date:
+          type: string
+          format: date
+        participant_ids:
+          type: array
+          items:
+            type: integer
+          minItems: 1
+          uniqueItems: true
+    Balance:
+      type: object
+      properties:
+        person_id:
+          type: integer
+        name:
+          type: string
+        balance:
+          type: number
+      required:
+        - person_id
+        - name
+        - balance
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+        - detail
+    HTTPValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+            properties:
+              loc:
+                type: array
+                items:
+                  oneOf:
+                    - type: string
+                    - type: integer
+              msg:
+                type: string
+              type:
+                type: string
+            required:
+              - loc
+              - msg
+              - type
+      required:
+        - detail
