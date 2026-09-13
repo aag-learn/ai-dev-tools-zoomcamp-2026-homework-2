@@ -25,8 +25,12 @@ for why this split matters):
 1. A Vite + Vue 3 + TypeScript project at `frontend/` (e.g. scaffolded from
    the `vue-ts` Vite template), managed with npm per
    `_docs/architecture.md`.
-2. Tailwind CSS wired up: `tailwind.config.*` extends `fontFamily.sans` to
-   lead with `'IBM Plex Sans'`, and the IBM Plex Sans Google Fonts
+2. Tailwind CSS **v4** wired up via the official `@tailwindcss/vite` plugin
+   (registered in `vite.config.ts` — no `tailwind.config.*`,
+   `postcss.config.*`, or `autoprefixer` dependency; v4's Vite plugin
+   supersedes all three). `src/style.css` imports Tailwind and declares an
+   `@theme` block setting `--font-sans` to lead with `'IBM Plex Sans'`
+   (v4's CSS-first theme config), and the IBM Plex Sans Google Fonts
    stylesheet is loaded globally (e.g. from `index.html`) — per
    `_docs/design-system.md`'s Typography section. No color palette
    extension is needed; the design system maps to stock Tailwind classes.
@@ -120,9 +124,12 @@ for why this split matters):
 
 1. `frontend/package.json` exists, declaring `vue`, `vue-router`, and
    `openapi-fetch` as dependencies, and `vite`, `typescript`,
-   `openapi-typescript`, `tailwindcss`, `postcss`, `autoprefixer`, `msw`,
-   `vitest`, and `@testing-library/vue` as devDependencies. No other
-   dependency is added without separate sign-off, per `AGENTS.md`.
+   `openapi-typescript`, `tailwindcss` (v4), `@tailwindcss/vite`, `msw`,
+   `vitest`, `@testing-library/vue`, and `jsdom` as devDependencies. No
+   other dependency is added without separate sign-off, per `AGENTS.md`.
+   (`postcss`/`autoprefixer` are dropped — superseded by v4's Vite plugin;
+   `jsdom` is added because Vitest 5 has no bundled DOM environment and
+   none of the `@testing-library/vue` tests below can run without one.)
 2. `cd frontend && npm install && npm run build` completes with exit code
    0 and produces a `frontend/dist/` directory.
 3. `frontend/src/router/index.ts` (or equivalent) defines exactly three
@@ -144,9 +151,10 @@ for why this split matters):
    (`bg-indigo-50`, `text-indigo-700`) and the other two have the inactive
    classes (`text-slate-600` in the sidebar / `text-slate-500` in the tab
    bar).
-7. `frontend/tailwind.config.*` extends `theme.fontFamily.sans` to lead
-   with `'IBM Plex Sans'`, and the rendered `index.html` loads the IBM
-   Plex Sans Google Fonts stylesheet.
+7. `frontend/src/style.css` contains an `@theme` block setting
+   `--font-sans` to lead with `'IBM Plex Sans'` (Tailwind v4's CSS-first
+   theme config, superseding a `tailwind.config.*` file), and the
+   rendered `index.html` loads the IBM Plex Sans Google Fonts stylesheet.
 8. `frontend/src/mocks/browser.ts`, `frontend/src/mocks/server.ts`, and
    `frontend/src/mocks/handlers.ts` all exist; `handlers.ts` exports an
    empty array; the dev entry point starts the MSW worker only when
@@ -215,9 +223,11 @@ for why this split matters):
 - Package manager is npm, not yarn or pnpm, per `_docs/architecture.md`'s
   repository layout.
 - No dependency beyond the list in acceptance criterion 1 is added to
-  `frontend/package.json` without asking first, per `AGENTS.md`. The list
-  in criterion 1 is itself pre-approved via `_docs/architecture.md`, which
-  already names every one of these tools.
+  `frontend/package.json` without asking first, per `AGENTS.md`. Most of
+  the list in criterion 1 is pre-approved via `_docs/architecture.md`,
+  which names these tools; `@tailwindcss/vite` and `jsdom` were not
+  literally named there and required separate human sign-off (see "Open
+  questions") — that sign-off is what makes them part of this list.
 - Vue components use `<script setup lang="ts">` throughout, per
   `_docs/architecture.md`.
 - Styling is Tailwind utility classes only, matching
@@ -248,5 +258,32 @@ for why this split matters):
   default: `@testing-library/vue`, matching
   `_docs/testing-guidelines.md`'s "Vitest + Vue Testing Library" wording.
 
-All four open questions above have been reviewed and confirmed (or
-resolved by issue #1 merging) by a human before implementation starts.
+The following three questions arose during implementation, once the
+implementer hit real version conflicts not anticipated when this spec was
+first groomed. All were reviewed and confirmed by a human before the
+implementation was finalized:
+
+- **Tailwind major version**: not addressed when this spec was first
+  written — it assumed Tailwind v3's architecture (separate `postcss`/
+  `autoprefixer`, a `tailwind.config.*` file) without naming a version.
+  npm's current `latest` is Tailwind v4, which replaces that architecture
+  entirely (CSS-first `@theme` config, `@tailwindcss/vite` plugin, no
+  separate PostCSS/autoprefixer packages) — installing it as originally
+  worded would have made acceptance criterion 7 unsatisfiable. A human
+  reviewed this conflict and chose to move forward with **v4** rather than
+  pin back to v3, so Scope item 2, acceptance criteria 1 and 7, and the
+  Constraints section above were all updated to v4's architecture.
+- **TypeScript version**: confirmed. The Vite `vue-ts` scaffold defaults
+  to `typescript ~6.0.2`, but `openapi-typescript@7.13.0` peer-requires
+  `^5.x`, causing an install conflict. A human reviewed this and confirmed
+  downgrading to `typescript ^5.9.3`.
+- **`jsdom` as an added devDependency**: confirmed. Vitest 5 has no
+  bundled DOM environment, and none of the `@testing-library/vue` tests
+  required by acceptance criteria 6, 9, and 10 can run without one. A
+  human reviewed this and approved adding `jsdom` as a devDependency (now
+  reflected in acceptance criterion 1 above) rather than treating it as an
+  unapproved dependency addition.
+
+All seven open questions above (the original four plus these three) have
+been reviewed and confirmed (or resolved by issue #1 merging) by a human
+before implementation is considered final.
