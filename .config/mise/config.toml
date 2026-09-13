@@ -5,3 +5,5 @@ gh = "latest"
 jj = "latest"
 python = "latest"
 uv = "latest"
+node = "latest"
+
