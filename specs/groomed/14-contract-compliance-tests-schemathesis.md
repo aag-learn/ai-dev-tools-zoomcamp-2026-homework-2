@@ -255,8 +255,9 @@ and give a false sense of completeness.
   reproducibility across CI runs. Flag if a fixed seed is wanted for
   reproducible CI runs.
 - **Single combined test function vs. one per path**: assumed one
-  `@schema.parametrize()` function covering all 7 operations (Schemathesis
-  expands this into 7 collected pytest items internally), rather than
+  `@schema.parametrize()` function covering all 8 operations (Schemathesis
+  expands this into 8 collected pytest items internally, since issue #1
+  was amended to add `PATCH /expenses/{expense_id}`), rather than
   separate hand-split functions per resource (people/expenses/balances).
   This matches "generated from the contract, not hand-written per
   endpoint" most literally. Flag if per-resource splitting (e.g.
