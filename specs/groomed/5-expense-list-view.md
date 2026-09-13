@@ -65,9 +65,15 @@ below):
 5. One row per expense, single line (design-system.md's "Expense row"):
    description (15px/600) + meta line (13px/400, muted, not truncated —
    see item 14) stacked on the left; amount (15px/600) + a 30px edit
-   (pencil) icon button + a 30px delete (trash) icon button, in that
-   order, on the right. Rows divided by `border-slate-100`, last row has
-   no divider, per `py-4 px-5`-ish row padding.
+   (pencil) icon button (`aria-label="Edit {description}"`) + a 30px
+   delete (trash) icon button (`aria-label="Delete {description}"`), in
+   that order, on the right, each label interpolating that row's own
+   expense description (e.g. an expense described "Groceries" renders
+   `aria-label="Edit Groceries"` / `aria-label="Delete Groceries"`) so
+   every row's buttons are distinguishable and locatable without relying
+   on a CSS class or DOM position (see Acceptance criterion 16). Rows
+   divided by `border-slate-100`, last row has no divider, per `py-4
+   px-5`-ish row padding.
 6. Meta line reads `"{date} · Paid by {payer name} · Split between
    {participant names}"` — e.g. "Oct 2 · Paid by Alice · Split between
    Alice, Bob, Priya, Sam" — always listing every participant's full name
@@ -303,6 +309,19 @@ behavior table):
 15. `cd frontend && npm test` passes, including the tests from criterion
     14, and `cd frontend && npm run build` still exits 0 with
     `ExpensesView.vue`'s real content in place.
+16. Desktop (`lg:` and up): each row's edit icon button has an
+    `aria-label` of the form `"Edit {description}"` and each row's delete
+    icon button has an `aria-label` of the form `"Delete {description}"`,
+    where `{description}` is that row's own rendered expense description
+    (e.g. a row for an expense described "Groceries" has an edit button
+    with `aria-label="Edit Groceries"` and a delete button with
+    `aria-label="Delete Groceries"`) — checkable by inspecting the
+    rendered markup's `aria-label` attributes on each row's edit/delete
+    buttons and confirming they vary per row and match that row's
+    description text. This gives each row's controls a reliable,
+    non-CSS-class way to be located (e.g. by an accessible-role/name
+    query), matching the pattern already required of the mobile
+    icon-only "Add expense" button (criterion 8).
 
 ## Edge cases considered
 
@@ -339,6 +358,13 @@ behavior table):
   (Scope item 6/Acceptance criterion 4), a very long comma-separated name
   list can wrap or extend the row — not addressed by this issue, same
   "not covered yet" gap as long descriptions.
+- **Two expenses sharing an identical description**: their `aria-label`s
+  (criterion 16) are identical text, which is acceptable — consumers
+  (e.g. `specs/groomed/16-end-to-end-playwright-test-suite.md`'s e2e
+  suite) are expected to scope their locator to a specific row (e.g. via
+  that row's container) before finding the edit/delete button within it,
+  the same way they'd already have to disambiguate identical description
+  text elsewhere in the row.
 
 ## Constraints
 
@@ -408,3 +434,17 @@ behavior table):
   note that a real implementation should add hover feedback the static
   mockup doesn't show. Assumed a standard Tailwind `hover:bg-slate-100`
   (or similar subtle) treatment; flag if a specific style is required.
+- **Per-row `aria-label` scoped to desktop only, not tablet/mobile**:
+  Acceptance criterion 16 mandates `"Edit {description}"`/`"Delete
+  {description}"` accessible names only for the `lg:` (desktop) edit/
+  delete buttons, per the gap identified while grooming
+  `specs/groomed/16-end-to-end-playwright-test-suite.md` (its e2e suite
+  runs only at Playwright's default desktop-sized viewport, per that
+  spec's Out of scope). Since Scope item 7 already says tablet reuses
+  "the same header/row structure as desktop" for the same markup, an
+  implementation that shares row markup across `md:`/`lg:` will likely
+  carry these labels onto tablet's buttons for free; that's acceptable
+  but not separately required here. This spec does not mandate an
+  equivalent labeled pattern for the mobile two-line row's edit/delete
+  buttons (Scope item 10) — flag if mobile accessible names for these two
+  buttons are also wanted, e.g. for a future mobile-viewport e2e pass.
