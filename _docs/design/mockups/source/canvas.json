@@ -1,0 +1,19 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 900, "title": "Desktop — People" },
+    { "file": "Expenses.dc.html", "x": 1520, "y": 0, "w": 1440, "h": 900, "title": "Desktop — Expenses" },
+    { "file": "ExpenseForm.dc.html", "x": 3040, "y": 0, "w": 1440, "h": 900, "title": "Desktop — Add/Edit expense" },
+    { "file": "Balances.dc.html", "x": 4560, "y": 0, "w": 1440, "h": 900, "title": "Desktop — Balances" },
+
+    { "file": "ExpensesTablet.dc.html", "x": 0, "y": 1020, "w": 768, "h": 1024, "title": "Tablet — Expenses" },
+
+    { "file": "PeopleMobile.dc.html", "x": 868, "y": 1020, "w": 390, "h": 844, "title": "Mobile — People" },
+    { "file": "ExpensesMobile.dc.html", "x": 1338, "y": 1020, "w": 390, "h": 844, "title": "Mobile — Expenses" },
+    { "file": "ExpenseFormMobile.dc.html", "x": 1808, "y": 1020, "w": 390, "h": 844, "title": "Mobile — Add expense" },
+    { "file": "BalancesMobile.dc.html", "x": 2278, "y": 1020, "w": 390, "h": 844, "title": "Mobile — Balances" }
+  ],
+  "annotations": [
+    { "id": "brief-summary", "x": 0, "y": -100, "w": 460, "text": "Tally — v1 mockups\nDesktop: full sidebar. Tablet: same sidebar, tighter content. Mobile: bottom tab bar, full-screen form sheet." }
+  ],
+  "launch": { "view": "canvas" }
+}
