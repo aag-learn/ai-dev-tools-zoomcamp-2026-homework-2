@@ -23,7 +23,7 @@ e.g. `1.0.0`), and no `security` scheme anywhere (v1 has no auth, per the
 feature scope). All JSON field names are `snake_case` (matches Pydantic
 models directly, no alias mapping needed on the backend).
 
-### Paths and operations (7 total)
+### Paths and operations (8 total)
 
 1. **`POST /people`** — add a person.
    - Request body: `PersonCreate`.
@@ -52,10 +52,24 @@ models directly, no alias mapping needed on the backend).
    - `404` → `Error` (`expense_id` doesn't exist).
    - `422` → `HTTPValidationError` (same field-level rules as create).
    - `400` → `Error` (same referential-integrity rule as create).
-6. **`DELETE /expenses/{expense_id}`** — delete an expense.
+6. **`PATCH /expenses/{expense_id}`** — partially edit an expense. Every
+   field in the request body is optional; only the fields present in the
+   body are updated, all others keep their currently stored value. This is
+   a distinct operation from `PUT`, not a variant of it — see "Edit
+   semantics" resolution below.
+   - Request body: `ExpensePatch`.
+   - `200` → `Expense` (updated, full resource returned — same as `PUT`).
+   - `404` → `Error` (`expense_id` doesn't exist).
+   - `422` → `HTTPValidationError` (same field-level rules as create, but
+     only applied to fields actually present in the body — e.g. an
+     omitted `amount` isn't checked against `exclusiveMinimum: 0`, but a
+     provided `amount: 0` still is).
+   - `400` → `Error` (same referential-integrity rule as create/`PUT`,
+     applied only to `payer_id`/`participant_ids` if provided).
+7. **`DELETE /expenses/{expense_id}`** — delete an expense.
    - `204` → no body.
    - `404` → `Error` (`expense_id` doesn't exist).
-7. **`GET /balances`** — each person's net position.
+8. **`GET /balances`** — each person's net position.
    - `200` → array of `Balance`, one entry per person currently in the
      group (including people with zero expenses), ordered by `person_id`
      ascending. Positive `balance` = net owed to them; negative = they net
@@ -83,10 +97,20 @@ health-check route (see "Out of scope").
   `participant_ids` (array of integer, `minItems: 1`, `uniqueItems: true`).
   All required in the response.
 - **`ExpenseWrite`**: same fields as `Expense` minus `id` — this is the
-  request body for both create and edit. All fields required (there is no
+  request body for both create (`POST /expenses`) and full-replace edit
+  (`PUT /expenses/{expense_id}`). All fields required (there is no
   API-level "default participants to everyone" behavior; that's a frontend
   form concern per issue #6 — the API always requires an explicit,
   non-empty `participant_ids`).
+- **`ExpensePatch`**: same fields as `ExpenseWrite`
+  (`description`/`amount`/`payer_id`/`date`/`participant_ids`), but every
+  field is optional — this is the request body for `PATCH
+  /expenses/{expense_id}` only. Field-level constraints
+  (`minLength`/`maxLength`/`exclusiveMinimum`/`format: date`/`minItems`/
+  `uniqueItems`) are identical to `ExpenseWrite`'s per-field rules and
+  still apply whenever a field is present in the body; a request body of
+  `{}` (no fields) is valid and is a no-op update (`200` with the
+  unchanged `Expense`, not an error).
 - **`Balance`**: `person_id` (integer), `name` (string), `balance`
   (number). All required.
 - **`Error`**: `detail` (string, required) — used for `400` and `404`
@@ -111,6 +135,11 @@ health-check route (see "Out of scope").
 - The exact rounding/remainder-distribution algorithm for balances that
   don't split evenly — deferred to issue #13 (balances endpoint); this
   contract fixes only the response shape.
+- The v1 frontend calling `PATCH /expenses/{expense_id}` — the edit form
+  (issue #6) always submits the complete expense and will keep using
+  `PUT`. `PATCH` is added to the contract as a capability for future API
+  clients, not because the v1 UI needs it; no frontend work changes as a
+  result of adding it.
 - Actually implementing any route, schema (Pydantic/SQLAlchemy), or test —
   covered by issues #9–#14. This issue produces only the YAML file.
 
@@ -128,24 +157,29 @@ health-check route (see "Out of scope").
    only — it must not add an entry to any `package.json`/`pyproject.toml`,
    since neither exists yet in this repo and none should be created by
    this issue (per `AGENTS.md`, dependencies aren't added without asking).
-5. `paths` contains exactly these 7 operations and no others:
+5. `paths` contains exactly these 8 operations and no others:
    `POST /people`, `GET /people`, `POST /expenses`, `GET /expenses`,
-   `PUT /expenses/{expense_id}`, `DELETE /expenses/{expense_id}`,
-   `GET /balances`.
+   `PUT /expenses/{expense_id}`, `PATCH /expenses/{expense_id}`,
+   `DELETE /expenses/{expense_id}`, `GET /balances`.
 6. For each operation listed in Scope, the declared response status codes
    and the schema referenced by each match Scope exactly (e.g.
    `POST /people` has `201`→`Person` and `422`→`HTTPValidationError` and
    no other documented response codes; `DELETE /expenses/{expense_id}` has
-   `204` with no response body and `404`→`Error`).
+   `204` with no response body and `404`→`Error`; `PATCH
+   /expenses/{expense_id}` has `200`→`Expense`, `404`→`Error`,
+   `422`→`HTTPValidationError`, `400`→`Error`, and no other documented
+   response codes).
 7. `components/schemas` contains exactly `Person`, `PersonCreate`,
-   `Expense`, `ExpenseWrite`, `Balance`, `Error`, `HTTPValidationError`,
-   with the fields, types, and constraints (`minLength`, `maxLength`,
-   `minItems`, `uniqueItems`, `exclusiveMinimum`, `format: date`,
-   `readOnly`) listed in Scope.
+   `Expense`, `ExpenseWrite`, `ExpensePatch`, `Balance`, `Error`,
+   `HTTPValidationError`, with the fields, types, and constraints
+   (`minLength`, `maxLength`, `minItems`, `uniqueItems`,
+   `exclusiveMinimum`, `format: date`, `readOnly`) listed in Scope.
 8. `ExpenseWrite` has no `id` property; `PersonCreate` has no `id`
-   property.
-9. `expense_id` in the two `/expenses/{expense_id}` paths is declared as a
-   required path parameter of type integer on both operations.
+   property; `ExpensePatch` has no `id` property and none of its
+   properties are listed under `required`.
+9. `expense_id` in the three `/expenses/{expense_id}` operations (`PUT`,
+   `PATCH`, `DELETE`) is declared as a required path parameter of type
+   integer on all three.
 10. Every JSON property name across every schema in the document is
     `snake_case` (no `camelCase` property anywhere), checkable by manual
     inspection of `components/schemas`.
@@ -162,20 +196,34 @@ health-check route (see "Out of scope").
   return `200` with an empty array `[]` when no people/expenses exist yet
   — no special "empty" response shape.
 - **`participant_ids` with duplicates**: rejected at the schema level via
-  `uniqueItems: true` on `ExpenseWrite.participant_ids` → `422`.
-- **Empty `participant_ids`**: rejected via `minItems: 1` → `422`.
+  `uniqueItems: true` on `ExpenseWrite.participant_ids` (and, if present,
+  `ExpensePatch.participant_ids`) → `422`.
+- **Empty `participant_ids`**: rejected via `minItems: 1` → `422`, whether
+  submitted via `ExpenseWrite` (always required) or `ExpensePatch` (when
+  the field is present in the body at all).
 - **`amount` of `0` or negative**: rejected via `exclusiveMinimum: 0` →
-  `422`.
+  `422`, in both `ExpenseWrite` and (when provided) `ExpensePatch`.
 - **`payer_id` or a `participant_ids` entry pointing at a person that
   doesn't exist**: this can't be expressed as a JSON Schema constraint (it
   needs a database lookup), so it's carved out as its own `400` response
-  distinct from the `422` schema-validation responses.
+  distinct from the `422` schema-validation responses. Applies identically
+  whether the reference comes in via `POST`, `PUT`, or `PATCH`.
 - **Editing an expense to reference a payer/participant that no longer
   makes sense**: since people can never be deleted in v1 (out of scope),
   there's no "person was removed after the expense was created" case to
   handle — any `id` that was ever valid stays valid.
-- **`PUT` on a nonexistent `expense_id`**: `404`, not a silent create —
-  edit and create are always distinct operations, never upsert.
+- **`PUT` or `PATCH` on a nonexistent `expense_id`**: `404`, not a silent
+  create — edit and create are always distinct operations, never upsert,
+  for both full-replace and partial edit.
+- **`PATCH` with an empty body (`{}`)**: valid, not a `422` — no fields
+  means no fields are changed; response is `200` with the expense
+  unchanged.
+- **`PATCH` and `PUT` both available on the same expense**: not a
+  conflict — they're independent operations an API client chooses between
+  based on whether it has the complete new state (`PUT`) or only the
+  fields it wants to change (`PATCH`). The contract doesn't define any
+  interaction or precedence between them beyond both operating on current
+  stored state at request time.
 - **Balances for a person with zero expenses**: still appears in the
   `GET /balances` array with `balance: 0`, since "each person's net
   position" (feature scope) implies full coverage of the current group,
@@ -206,11 +254,18 @@ health-check route (see "Out of scope").
   wants UUIDs instead (e.g. for future multi-client sync), that's a
   contract change and should happen before issues #9–#13 start, since it
   touches the data model directly.
-- **Edit semantics**: assumed `PUT` with a full-replacement body (same
-  shape as create), not `PATCH` with partial fields, since the feature
-  scope's edit form always shows the complete expense. If partial-field
-  editing is wanted later, that's a contract change, not an
-  implementation detail.
+- **Edit semantics**: resolved. A human reviewed this question (previously
+  open, assuming `PUT`-only full-replacement) and decided: implement
+  *both* `PUT` and `PATCH` on `/expenses/{expense_id}`. `PUT` keeps its
+  full-replacement body (`ExpenseWrite`, all fields required) exactly as
+  originally specced, since the v1 edit form (issue #6) always submits the
+  complete expense and will keep using `PUT` — no frontend change results
+  from this decision. `PATCH` is added as a new operation taking a new
+  `ExpensePatch` schema (all fields optional; only provided fields are
+  updated, others retain their stored value), with the same response
+  schema and status codes as `PUT` (`200`/`404`/`422`/`400`). `PATCH` is a
+  new capability for future API clients — the v1 UI has no code path that
+  calls it.
 - **Referential-integrity error code**: assumed `400` for an invalid
   `payer_id`/`participant_ids` reference (distinct from the `422` used for
   schema-shape violations). This split is a judgment call — a human could
