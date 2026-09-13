@@ -81,7 +81,9 @@ rendered as a centered modal):
    `rounded-2xl`, drop shadow, 28px padding (design-system.md's "Modal
    dialog").
 6. Header row: title ("Add expense" in add mode, "Edit expense" in edit
-   mode) + a close (X) icon button that emits `close`.
+   mode) + a close (X) icon button that emits `close`, with
+   `aria-label="Close"` so it has a reliable, non-CSS-class way to be
+   located (see Acceptance criterion 22).
 7. Footer: right-aligned ghost "Cancel" button (emits `close`) + primary
    "Save expense" button (submits the form) — same label in both modes,
    per "Open questions."
@@ -385,6 +387,19 @@ rendered as a full-screen sheet, not a modal):
 21. `cd frontend && npm test` passes, including the tests from criteria 19
     and 20, and `cd frontend && npm run build` still exits 0 with
     `ExpenseForm.vue` and the updated `ExpensesView.vue` in place.
+22. Desktop/tablet (`md:` and up): the close (X) icon button in the modal
+    header has `aria-label="Close"` — checkable by inspecting the rendered
+    markup's `aria-label` attribute on that button. This mirrors the
+    per-row `aria-label` pattern `specs/groomed/5-expense-list-view.md`'s
+    criterion 16 established for its edit/delete icon buttons, and gives
+    `specs/groomed/16-end-to-end-playwright-test-suite.md`'s e2e suite a
+    reliable, non-CSS-class way to close this modal. The mobile sheet's
+    header (item 9) uses text buttons ("Cancel"/"Save"), which already
+    have an accessible name from their visible text, so no equivalent
+    addition is needed there; the same is true of the Paid by and Date
+    custom controls (item 13), which always show visible text (a
+    placeholder, a person's name, or a formatted date) rather than being
+    icon-only, so no additional `aria-label` is required for them either.
 
 ## Edge cases considered
 
