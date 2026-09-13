@@ -249,11 +249,10 @@ health-check route (see "Out of scope").
 
 ## Open questions
 
-- **ID type**: assumed integer, server-generated, auto-increment (matches
-  SQLAlchemy/Alembic defaults for both SQLite and Postgres). If a human
-  wants UUIDs instead (e.g. for future multi-client sync), that's a
-  contract change and should happen before issues #9–#13 start, since it
-  touches the data model directly.
+- **ID type**: confirmed. A human reviewed this question (previously open)
+  and confirmed the stated default: integer, server-generated,
+  auto-increment (matches SQLAlchemy/Alembic defaults for both SQLite and
+  Postgres) — not UUIDs.
 - **Edit semantics**: resolved. A human reviewed this question (previously
   open, assuming `PUT`-only full-replacement) and decided: implement
   *both* `PUT` and `PATCH` on `/expenses/{expense_id}`. `PUT` keeps its
@@ -266,21 +265,17 @@ health-check route (see "Out of scope").
   schema and status codes as `PUT` (`200`/`404`/`422`/`400`). `PATCH` is a
   new capability for future API clients — the v1 UI has no code path that
   calls it.
-- **Referential-integrity error code**: assumed `400` for an invalid
-  `payer_id`/`participant_ids` reference (distinct from the `422` used for
-  schema-shape violations). This split is a judgment call — a human could
-  reasonably prefer folding both into `422` with a custom `detail`
-  message instead.
-- **Ordering guarantees**: assumed `GET /expenses` orders by `date`
-  descending (tiebreak `id` descending), and `GET /people` /
-  `GET /balances` order by `id`/`person_id` ascending. The feature scope
-  says "most recent first" for expenses but doesn't say whether "recent"
-  means the expense's `date` field or its creation time — these can
-  diverge (e.g. entering an old expense today). Assumed `date` since
-  that's the field visible to and controlled by the user; flag if
-  creation-time ordering was actually intended.
+- **Referential-integrity error code**: confirmed. A human reviewed this
+  question (previously open) and confirmed the stated default: `400` for
+  an invalid `payer_id`/`participant_ids` reference, kept distinct from
+  the `422` used for schema-shape violations.
+- **Ordering guarantees**: confirmed. A human reviewed this question
+  (previously open) and confirmed the stated default: `GET /expenses`
+  orders by `date` descending (tiebreak `id` descending), and
+  `GET /people` / `GET /balances` order by `id`/`person_id` ascending —
+  "most recent first" means the expense's `date` field, not creation
+  time.
 
-None of the above block writing the contract now — each has a stated
-default in Scope above — but they should be confirmed before issues
-#9–#13 (which build the data model and endpoints against this contract)
-start, since a later change to any of them is a breaking contract change.
+All four open questions above have been reviewed and confirmed by a
+human (see each bullet) before implementation starts on issues #9–#13,
+which build the data model and endpoints against this contract.
