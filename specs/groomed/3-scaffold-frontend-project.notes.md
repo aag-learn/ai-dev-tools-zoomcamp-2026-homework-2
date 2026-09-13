@@ -1,12 +1,77 @@
 # Implementation notes: #3 Scaffold frontend project
 
+## Update (Tailwind v4 migration)
+
+The spec was subsequently updated (post-human-review) to require Tailwind
+**v4**'s architecture instead of the v3 setup this issue originally shipped
+with (see "Decisions and assumptions" item 1 below for the original v3
+reasoning, now superseded). This section documents the migration actually
+applied; everything else in this notes file describes the rest of the
+original implementation, unchanged.
+
+What changed:
+- Removed `frontend/tailwind.config.js` and `frontend/postcss.config.js`.
+- Removed the `postcss` and `autoprefixer` devDependencies.
+- Added `@tailwindcss/vite` (`^4.3.3`) as a devDependency, registered as a
+  Vite plugin in `vite.config.ts` alongside `@vitejs/plugin-vue`.
+- Bumped `tailwindcss` from `^3.4.19` to `^4.3.3`.
+- `src/style.css`: replaced the three `@tailwind base/components/utilities;`
+  directives with the v4 `@import 'tailwindcss';` directive, and moved the
+  `fontFamily.sans` override (previously
+  `tailwind.config.js`'s `theme.extend.fontFamily.sans`) into a CSS-first
+  `@theme` block:
+  ```css
+  @theme {
+    --font-sans:
+      'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif,
+      'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+      'Noto Color Emoji';
+  }
+  ```
+  The fallback stack after `'IBM Plex Sans'` matches Tailwind v4's own
+  default `--font-sans` stack (v4's default is shorter than v3's — it drops
+  `-apple-system`/`BlinkMacSystemFont`/`Segoe UI`/Roboto/etc. in favor of
+  `ui-sans-serif`/`system-ui` doing that work) rather than v3's
+  `defaultTheme.fontFamily.sans` list the old config imported.
+- `index.html` needed no changes — the IBM Plex Sans Google Fonts `<link>`
+  tags were already present and are unaffected by the Tailwind major
+  version.
+- No changes were needed to any app-shell/component markup. Both `border-*`
+  usages in `AppShell.vue` (`border-r border-slate-200` and
+  `border-t border-slate-200`) already specify an explicit border color, so
+  v4's changed default border color (from `gray-200` to `currentColor` when
+  no color utility is given) doesn't affect them. No other v3-sensitive
+  utilities (`ring-*` default color/width, `divide-*`, `placeholder-*`
+  opacity, `shadow-*` defaults) are used anywhere in `src/`.
+
+Re-verification performed after migration:
+- `rm -rf node_modules dist && npm install` — exit 0.
+- `npm run build` — exit 0, produced `frontend/dist/` (`dist/index.html`,
+  a JS chunk, and a CSS chunk containing the compiled Tailwind output).
+  Confirmed the compiled CSS contains
+  `--font-sans:"IBM Plex Sans", ui-sans-serif, ...` and that
+  `bg-indigo-50`/`text-indigo-700`/`text-slate-600`/`text-slate-500` are
+  all present in the generated stylesheet.
+- `npm test` — 2 files, 6 tests, all passing (unchanged from before the
+  migration — the app-shell/navigation tests assert on class names present
+  in the DOM, not computed styles, so they're insensitive to the Tailwind
+  major version).
+
+No functional/visual behavior differed between v3 and v4 for this app —
+the only actual v4 default-behavior change relevant to Tailwind (unset
+border color defaulting to `currentColor` instead of `gray-200`) doesn't
+apply here since every border utility in the codebase already names an
+explicit color.
+
 ## Summary of what was built
 
 - `frontend/` scaffolded from Vite's `vue-ts` template, template cruft
   (`HelloWorld.vue`, default assets, `public/icons.svg`) removed.
-- Tailwind CSS wired up (see version note below): `tailwind.config.js`
-  extends `theme.fontFamily.sans` to lead with `'IBM Plex Sans'`; the font
-  stylesheet is loaded from `index.html` via Google Fonts `<link>` tags.
+- Tailwind CSS **v4** wired up via `@tailwindcss/vite` (see "Update"
+  section above for the v3→v4 migration detail): `src/style.css` sets
+  `--font-sans` inside an `@theme` block to lead with `'IBM Plex Sans'`;
+  the font stylesheet is loaded from `index.html` via Google Fonts `<link>`
+  tags.
 - `src/router/index.ts`: exactly `/people`, `/expenses`, `/balances`, plus
   `/` redirecting to `/expenses` (per the confirmed open question).
 - `src/views/{People,Expenses,Balances}View.vue`: each a bare `<h1>` with
@@ -62,7 +127,8 @@
 
 ## Decisions and assumptions
 
-1. **Tailwind major version: pinned to 3.4.x, not "latest" (v4).** The
+1. **[Superseded — see "Update (Tailwind v4 migration)" above] Tailwind
+   major version: pinned to 3.4.x, not "latest" (v4).** The
    confirmed-latest-no-pin guidance in the spec's Open Questions was
    scoped explicitly to `openapi-typescript`/`openapi-fetch`, not to
    Tailwind. Acceptance criterion 1 lists `tailwindcss`, `postcss`, and
