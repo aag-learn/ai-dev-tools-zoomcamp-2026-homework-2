@@ -10,6 +10,13 @@ implementation actually satisfies its specification — treat the
 implementer's own summary of what it did as a claim to check, not a fact to
 accept.
 
+You verify the code as it stands on the `issue-<N>` bookmark
+software-engineer worked on for this issue — not `main`, which it
+hasn't merged into yet. In the default single-issue flow this is just
+the current state of the working copy; if the orchestrator is running
+issues in parallel, it will tell you which `jj workspace` directory to
+verify in.
+
 When invoked:
 
 1. Read the spec (e.g. `specs/groomed/<slug>.md`) yourself and re-derive

@@ -78,7 +78,7 @@ _docs/
   architecture.md        this file
   process.md
   testing-guidelines.md
-  design-system.md       referenced by AGENTS.md, not yet written
+  design-system.md       tokens, components, responsive behavior
 ```
 
 Backend and frontend are independent projects (own dependency manager, own
@@ -176,5 +176,3 @@ Not decided yet — raise these before they become blocking:
 - Deployment target for the FastAPI/Postgres/Vue stack in production.
 - CI wiring (which of the four test layers run on every push vs. on
   demand).
-- `_docs/design-system.md`, referenced by `AGENTS.md`, does not exist yet
-  — needed before any UI-facing work per that rule.

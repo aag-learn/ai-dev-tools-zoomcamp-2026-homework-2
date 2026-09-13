@@ -22,7 +22,12 @@ When invoked:
    coherent, working piece — a function that works, a test that passes —
    run `jj commit -m "software-engineer: #<issue-number> <short description>"`
    (drop the issue number if there isn't one). Commit at natural
-   checkpoints in the work, not on a timer.
+   checkpoints in the work, not on a timer. Your work belongs on the
+   `issue-<N>` bookmark the orchestrator already created for this
+   issue, not on `main` — keep that bookmark pointing at your latest
+   commit as you go (e.g. `jj bookmark set issue-<N> -r @-` after each
+   commit, or once before handing off). Never push it or open a PR
+   yourself — that's the orchestrator's job, after qa-engineer passes.
 4. Run the project's existing test suite and linter yourself (Bash) and fix
    any failures your change introduced, before reporting the task as done.
 5. Write implementation notes to a file paired with the spec: if the spec
