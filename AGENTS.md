@@ -1,3 +1,10 @@
+## Project
+
+This application is called **Tally**. Use `tally` (lowercase) as the base
+name for anything that needs one and isn't already specified elsewhere —
+package/namespace names, service names, database name, etc. — unless a
+more specific convention is defined in `_docs/architecture.md`.
+
 ## Commands
 
 Backend (FastAPI, in `backend/`):
