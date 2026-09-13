@@ -49,12 +49,13 @@ issue rather than a feature-scoped list.
 
 1. Pick the next open issue (ordering by label/milestone/project priority). If none are open, stop and suggest invoking the planner subagent to add items to the backlog.
 2. If the issue is still labeled `needs-triage`, invoke pm to groom it before anything else.
-3. Create a bookmark `issue-<N>` at the current tip of `main`. Invoke software-engineer to implement it there — its commits land on that bookmark, never directly on `main`.
-4. Invoke qa-engineer to verify it, against that same bookmark's state.
-5. On FAIL, go back to step 3, passing qa-engineer's verdict and evidence as input.
-6. On PASS, re-check the acceptance criteria yourself. Push the `issue-<N>` bookmark and open a PR against `main` (`gh pr create`), linking the groomed spec and QA verdict in the description, then tell the user it's ready for review.
-7. Close the issue only once the PR is actually merged (see "Branching, review, and merging" below) — QA PASS alone is not enough to close it.
-8. Repeat until no open issues remain.
+3. Read the groomed spec's "Open questions" section. If it says `None`, proceed straight to step 4. Otherwise, present the open questions to the user and wait for them to confirm pm's stated assumptions or correct them — do not invoke software-engineer until they've responded. This is the checkpoint that catches a wrong assumption before code gets built on it, not after.
+4. Create a bookmark `issue-<N>` at the current tip of `main`. Invoke software-engineer to implement it there — its commits land on that bookmark, never directly on `main`.
+5. Invoke qa-engineer to verify it, against that same bookmark's state.
+6. On FAIL, go back to step 4, passing qa-engineer's verdict and evidence as input.
+7. On PASS, re-check the acceptance criteria yourself. Push the `issue-<N>` bookmark and open a PR against `main` (`gh pr create`), linking the groomed spec and QA verdict in the description, then tell the user it's ready for review.
+8. Close the issue only once the PR is actually merged (see "Branching, review, and merging" below) — QA PASS alone is not enough to close it.
+9. Repeat until no open issues remain.
 
 ### Branching, review, and merging (code changes)
 
@@ -106,6 +107,7 @@ look independent (see below for why).
 ### Rules
 
 - Do not skip step 2 — software-engineer never receives an issue still labeled `needs-triage`.
+- Do not skip step 3 either — a groomed spec with unresolved open questions never goes to software-engineer without the user's explicit sign-off first, even though pm already wrote down a reasonable default for each one. The default is there so implementation isn't blocked forever, not so the checkpoint can be skipped.
 - The software-engineer does not close the issue, push its bookmark, or open a PR — that's the orchestrator's job, once QA has passed.
 - qa-engineer does not fix the code — it only outputs PASS or FAIL, with evidence.
 - The orchestrator closes the issue only after its PR has been merged, which itself only happens after qa-engineer outputs PASS.
