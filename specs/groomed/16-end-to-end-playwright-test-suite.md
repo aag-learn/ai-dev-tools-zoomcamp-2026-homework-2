@@ -143,16 +143,21 @@ questions" for the underlying sequencing risk):
     the payer's balance now reads their baseline `+$50.00` and the
     participant's reads their baseline `−$50.00` (a $100 expense split
     equally two ways).
-13. Returns to Expenses, opens that row's edit form, changes Amount to
-    `60.00` only (description/payer/participants/date unchanged), and
-    saves. Asserts the row's amount now reads `$60.00`. Navigates to
-    Balances and asserts the payer's balance now reads their baseline
-    `+$30.00` and the participant's reads their baseline `−$30.00`.
-    Returns to Expenses and deletes the row via its delete control; asserts
-    the row is no longer present. Navigates to Balances and asserts both
-    people's balances have returned to exactly their baseline (`$0.00`/
-    "settled up"), proving the delete removed the expense's effect
-    entirely.
+13. Returns to Expenses, opens that row's edit form by clicking the button
+    with `aria-label="Edit {description}"` (interpolating this test's
+    generated description directly into the locator — no need to first
+    scope to the row via its description text, since the accessible name
+    is already unique to this expense), changes Amount to `60.00` only
+    (description/payer/participants/date unchanged), and saves. Asserts
+    the row's amount now reads `$60.00`. Navigates to Balances and asserts
+    the payer's balance now reads their baseline `+$30.00` and the
+    participant's reads their baseline `−$30.00`. Returns to Expenses and
+    deletes the row by clicking the button with
+    `aria-label="Delete {description}"` (same direct-locator approach);
+    asserts the row is no longer present. Navigates to Balances and
+    asserts both people's balances have returned to exactly their
+    baseline (`$0.00`/"settled up"), proving the delete removed the
+    expense's effect entirely.
 
 **General rule for both spec files:**
 
@@ -312,11 +317,16 @@ questions" for the underlying sequencing risk):
   Scope item 2.
 - Tests use accessible-role/text/label locators (Playwright's
   `getByRole`/`getByLabel`/`getByPlaceholder`/`getByText`), matching the
-  accessible-name attributes already required by #4/#5 (e.g.
-  `aria-label="Add person"`, `aria-label="Add expense"`) — no CSS-class or
-  XPath selectors, and no new `data-testid` attributes are added to
-  frontend components for this issue (none of #3–#7 specify any; see "Open
-  questions" for the one gap this creates).
+  accessible-name attributes already required by #4/#5/#6 — the
+  icon-only mobile add buttons (e.g. `aria-label="Add person"`,
+  `aria-label="Add expense"`), each desktop row's per-row-unique
+  `aria-label="Edit {description}"` / `aria-label="Delete {description}"`
+  edit/delete icon buttons (`specs/groomed/5-expense-list-view.md`
+  criterion 16), and the expense form's `aria-label="Close"` close icon
+  (`specs/groomed/6-add-and-edit-expense-form.md` criterion 22) — no
+  CSS-class or XPath selectors, and no new `data-testid` attributes are
+  added to frontend components for this issue (none of #3–#7 specify
+  any).
 - The suite runs against the **built** frontend (`npm run build` +
   `npm run preview`), never `npm run dev`, per `_docs/architecture.md`'s
   description of this layer ("the real FastAPI backend (SQLite) and the
@@ -328,22 +338,6 @@ questions" for the underlying sequencing risk):
 
 ## Open questions
 
-- **Accessible names for desktop edit/delete icon buttons and the expense
-  form's close icon aren't mandated anywhere yet**: `specs/groomed/5-expense-list-view.md`
-  and `specs/groomed/6-add-and-edit-expense-form.md` only specify
-  `aria-label`s for the *mobile* icon-only add buttons (e.g.
-  `aria-label="Add expense"`); the desktop per-row pencil/trash icon
-  buttons and the form's X close icon have no mandated accessible name in
-  either spec. Locating them reliably without a CSS-class selector
-  requires *some* name. This spec assumes (and treats as a small,
-  necessary addition to #5/#6 if not already present when their
-  implementations land) that each row's edit icon button has accessible
-  name "Edit expense", each delete icon button "Delete expense" (not
-  per-row-unique — this suite always scopes to a specific row via its
-  description text first, then finds the button within that row), and the
-  form's close icon "Close". Flag if a different naming convention is
-  preferred, or if #5/#6 should be formally amended instead of leaving
-  this as an implementation note here.
 - **No test-only reset/seed endpoint exists**: this spec resolves the
   resulting "database only ever grows" problem with per-test unique names
   and delta-based balance assertions (see "Edge cases considered") rather
