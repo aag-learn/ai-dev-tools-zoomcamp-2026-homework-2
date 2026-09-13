@@ -201,34 +201,24 @@ on top of it.
 
 ## Open questions
 
-- **Dev-server command choice**: assumed `fastapi dev src/app/main.py`
-  (via `fastapi[standard]`'s bundled `fastapi-cli`) over invoking
-  `uvicorn` directly, since `fastapi dev` is FastAPI's own recommended
-  local entry point (auto-reload, sensible defaults) and needs no
-  dependency beyond `fastapi[standard]`. Flag if `uvicorn
-  app.main:app --reload --app-dir src` (declaring bare `uvicorn` instead)
-  was actually intended — functionally similar, different dependency.
-- **`pydantic-settings` for config**: assumed, as the standard way to read
-  `DATABASE_URL` (and future env vars) in a FastAPI project. It is not
-  literally named in `_docs/architecture.md` the way FastAPI/SQLAlchemy/
-  Alembic are (see "Constraints"). Flag if a plain
-  `os.environ.get("DATABASE_URL", "sqlite:///./dev.db")` was preferred
-  instead — would drop this dependency from acceptance criterion 1.
-- **Sequencing dependency on issue #1**: `openapi/openapi.yaml` does not
-  exist in this repo yet (issue #1 is groomed but not implemented). None
-  of this issue's acceptance criteria actually read the contract's
-  content — this is pure scaffolding (FastAPI skeleton, DB config, Alembic
-  setup) with no routes or schemas matched against it yet. The
-  "Dependencies: #1" on the raw issue reflects
-  `specs/features/expense-splitter-poc.md`'s phase ordering (contract
-  before backend), not a technical blocker for this specific issue's
-  criteria. This spec assumes work can start regardless of #1's merge
-  status; flag if a human wants this issue to literally wait for #1 to
-  land first.
-- **`pyproject.toml` project name**: assumed `tally-backend`, per
-  `AGENTS.md`'s "tally" base-name convention; trivial to rename if a
-  different name is preferred.
-- **Python version floor**: not pinned beyond whatever `uv init` /
-  `.config/mise/config.toml`'s `python = "latest"` resolves to at
-  implementation time. Flag if a specific minimum (e.g. `>=3.12`) is
-  needed for compatibility with a later toolchain decision.
+- **Dev-server command choice**: confirmed. A human reviewed this
+  question (previously open) and confirmed the stated default:
+  `fastapi dev src/app/main.py`, via `fastapi[standard]`'s bundled
+  `fastapi-cli`, over invoking bare `uvicorn` directly.
+- **`pydantic-settings` for config**: confirmed. A human reviewed this
+  question (previously open) and confirmed the stated default:
+  `pydantic-settings`, over a plain `os.environ.get(...)`.
+- **Sequencing dependency on issue #1**: resolved by events — issue #1
+  has since merged. This issue's criteria never technically depended on
+  the contract's content anyway (pure scaffolding), so this changes
+  nothing about the work, but the question is no longer live either way.
+- **`pyproject.toml` project name**: confirmed. A human reviewed this
+  question (previously open) and confirmed the stated default:
+  `tally-backend`, per `AGENTS.md`'s "tally" base-name convention.
+- **Python version floor**: confirmed. A human reviewed this question
+  (previously open) and confirmed the stated default: no explicit pin —
+  whatever `.config/mise/config.toml`'s Python version resolves to at
+  implementation time.
+
+All five open questions above have been reviewed and confirmed (or
+resolved by issue #1 merging) by a human before implementation starts.

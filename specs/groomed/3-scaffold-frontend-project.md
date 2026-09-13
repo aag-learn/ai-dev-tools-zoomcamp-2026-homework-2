@@ -31,7 +31,7 @@ for why this split matters):
    `_docs/design-system.md`'s Typography section. No color palette
    extension is needed; the design system maps to stock Tailwind classes.
 3. Vue Router with exactly three top-level routes — `/people`, `/expenses`,
-   `/balances` — plus a redirect from `/` to `/people`.
+   `/balances` — plus a redirect from `/` to `/expenses`.
 4. Placeholder view components, one per route (e.g.
    `src/views/PeopleView.vue`, `ExpensesView.vue`, `BalancesView.vue`),
    each rendering only a top-level `<h1>` with the screen's name — no
@@ -127,7 +127,7 @@ for why this split matters):
    0 and produces a `frontend/dist/` directory.
 3. `frontend/src/router/index.ts` (or equivalent) defines exactly three
    top-level routes — `/people`, `/expenses`, `/balances` — plus a
-   redirect from `/` to `/people`, and no other routes.
+   redirect from `/` to `/expenses`, and no other routes.
 4. `PeopleView.vue`, `ExpensesView.vue`, and `BalancesView.vue` each exist
    under `frontend/src/views/` and each renders only a top-level `<h1>`
    containing the screen's name ("People", "Expenses", "Balances") — no
@@ -230,25 +230,23 @@ for why this split matters):
 
 ## Open questions
 
-- **Hard sequencing dependency on issue #1**: `openapi/openapi.yaml` does
-  not exist in this repo yet (issue #1 is groomed but not implemented).
-  Per `specs/features/expense-splitter-poc.md`'s build order, the frontend
-  phase is meant to start only once the contract phase closes, so this
-  spec assumes issue #1 lands (the file exists at that exact path) before
-  criteria 12 (codegen + typed client) are attempted. Criteria 1–11 and 13
-  don't depend on it and can proceed regardless. If a human instead wants
-  the typed-client work to start in parallel against a throwaway/
-  placeholder contract, that's a deviation from the documented phase
-  ordering and needs explicit sign-off — this spec does not assume that.
-- **Default landing route**: assumed `/` redirects to `/people` (no
-  existing doc records this decision). Trivial to change to `/expenses` or
-  `/balances` if a different first screen is preferred.
-- **`openapi-typescript`/`openapi-fetch` exact versions**: assumed latest
-  stable release of each, compatible with OpenAPI 3.0.3 input; no specific
-  version is pinned anywhere else in the repo. Flag if a specific version
-  is required for compatibility with a later toolchain decision.
-- **`@testing-library/vue` vs. `@vue/test-utils`**:
-  `_docs/testing-guidelines.md` says "Vitest + Vue Testing Library," so
-  this spec assumes `@testing-library/vue` (which itself depends on
-  `@vue/test-utils` under the hood). Flag if bare `@vue/test-utils` was
-  actually intended instead.
+- **Hard sequencing dependency on issue #1**: resolved by events — issue
+  #1 has since merged, so `openapi/openapi.yaml` exists in the repo.
+  Criterion 12 (codegen + typed client against the real contract) applies
+  as written; criterion 13 (the "contract doesn't exist yet" fallback)
+  does not apply.
+- **Default landing route**: confirmed. A human reviewed this question
+  (previously open, assuming `/people`) and chose `/expenses` instead —
+  `/` redirects to `/expenses`. Updated throughout Scope item 3 and
+  acceptance criterion 3 accordingly.
+- **`openapi-typescript`/`openapi-fetch` exact versions**: confirmed. A
+  human reviewed this question (previously open) and confirmed the stated
+  default: latest stable release of each, compatible with OpenAPI 3.0.3
+  input — no specific version pin.
+- **`@testing-library/vue` vs. `@vue/test-utils`**: confirmed. A human
+  reviewed this question (previously open) and confirmed the stated
+  default: `@testing-library/vue`, matching
+  `_docs/testing-guidelines.md`'s "Vitest + Vue Testing Library" wording.
+
+All four open questions above have been reviewed and confirmed (or
+resolved by issue #1 merging) by a human before implementation starts.
