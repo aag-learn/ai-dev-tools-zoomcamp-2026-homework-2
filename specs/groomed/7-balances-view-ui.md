@@ -311,44 +311,23 @@ documented rationale that only Expenses got a dedicated tablet mockup):
 
 ## Open questions
 
-- **Hard sequencing dependency on issues #1 and #3**: as of this grooming,
-  neither `openapi/openapi.yaml` nor `frontend/` exist in this repo. This
-  spec assumes both land — specifically issue #3's acceptance criteria
-  10–12, themselves gated on #1 — before this issue's work begins.
-  Acceptance criterion 1 makes that gate explicit, same pattern as
-  `specs/groomed/4-people-management-ui.md` and
-  `specs/groomed/5-expense-list-view.md`.
+- **Hard sequencing dependency on issues #1 and #3**: resolved by events —
+  both have since merged. This issue also has no cross-dependency on
+  #4/#5/#6 (Scope item 2), so it's cleared to implement independently of
+  their sequencing.
 - **Mobile omission of the status word — design-system.md gap or intended
-  divergence?**: `_docs/design-system.md`'s "Balance row" component
-  description (derived from the desktop mockup) states the row includes
-  "status word ('is owed'/'owes'... )" without calling out a mobile
-  exception, the way it explicitly does for other mobile-specific
-  adaptations (e.g. the Expense row's two-line mobile layout). But
-  `balances-mobile.html` itself simply omits that line. This spec follows
-  the mobile mockup literally (Scope item 7), since mockups are the
-  concrete per-breakpoint source and every sibling issue (#4, #5) resolved
-  breakpoint questions by pointing at the matching mockup file — but flags
-  that this may be an unintentional gap in design-system.md's prose rather
-  than a deliberate omission, worth a doc fix either way. Flag if the
-  status word should actually render on mobile too.
-- **Zero-balance ("settled up") treatment**: neither mockup includes a
-  `balance === 0` sample, and `_docs/design-system.md` doesn't describe
-  one. This spec assumes the status word "settled up", an unsigned
-  `$0.00`, muted `slate-500` text, and a `0%`-width bar (Scope item 10).
-  Flag if a different treatment (e.g. still showing `+$0.00` in a neutral
-  color, or omitting the row's bar track entirely) is preferred.
-- **Empty-state design**: `_docs/design-system.md` explicitly lists "zero
-  people" as undesigned generally. This spec assumes a minimal muted-text
-  row inside the existing list container (see "Edge cases considered"),
-  mirroring the interim default issues #4/#5 used for their own empty
-  states. Flag if a real empty-state design is wanted before
-  implementation.
-- **Static vs. computed mock data**: this spec seeds the `GET /balances`
-  mock with a fixed, independent in-memory array matching `balances.html`
-  (Scope item 13), rather than deriving mocked balances from #4/#5/#6's
-  people/expenses in-memory arrays. This avoids re-implementing the
-  remainder-distribution/rounding algorithm the contract (issue #1)
-  explicitly defers to the real backend (issue #13) inside a throwaway
-  mock. Flag if a human would rather the mock actually compute balances
-  from the shared people/expenses state for a more realistic dev
-  experience — that would be a materially larger scope for this issue.
+  divergence?**: not separately raised for human review — the concrete
+  behavior was already decided (follow the mobile mockup literally); this
+  is a documentation-fidelity note about design-system.md's prose, not a
+  functional ambiguity. Worth a small doc fix later, non-blocking.
+- **Zero-balance ("settled up") treatment**: not separately raised for
+  human review — low-stakes, well-reasoned interim default. Stands as
+  pm's assumed default: status word "settled up", unsigned `$0.00`, muted
+  `slate-500`, `0%`-width bar.
+- **Empty-state design**: confirmed. A human reviewed this question
+  (previously open) and confirmed the stated default: a minimal muted-text
+  row (see `_docs/design-system.md`'s new "Empty list row" component).
+- **Static vs. computed mock data**: confirmed. A human reviewed this
+  question (previously open) and confirmed the stated default: a static,
+  independent in-memory array matching `balances.html`'s sample values,
+  not derived from #4/#5/#6's shared people/expenses mock state.

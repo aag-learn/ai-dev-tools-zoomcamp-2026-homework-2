@@ -467,53 +467,36 @@ rendered as a full-screen sheet, not a modal):
 
 ## Open questions
 
-- **Hard sequencing dependency on issues #1, #3, #4, and #5**: as of this
-  grooming, none of `openapi/openapi.yaml`, `frontend/`, or a real
-  `ExpensesView.vue` exist in this repo. The GitHub issue declares
-  dependencies on #1–#4 only; this spec adds an undeclared cross-dependency
-  on #5 as well, because this issue edits `ExpensesView.vue`'s "Add
-  expense"/edit-icon wiring, which only exists once #5 lands (the same
-  kind of gap `specs/groomed/5-expense-list-view.md` itself flagged for its
-  own undeclared dependency on #4). Acceptance criterion 1 makes the full
-  gate explicit. Flag if a human would rather formally add #5 as a
-  declared dependency on the GitHub issue instead of leaving this
-  implementation-level note.
-- **Custom select/date control interaction mechanism**: `_docs/design-system.md`
-  requires a fully custom-styled box for Paid by and Date, explicitly
-  ruling out a native `<select>`/`<input type=date>`. This spec (Scope item
-  13) leaves the exact interaction — a custom dropdown listbox for Paid by,
-  and either a hand-built calendar or a hybrid approach (e.g. a visually
-  hidden native date input triggered from a custom-styled box) for Date —
-  to the implementer, since the mockups are static images with no
-  interactive prototype to copy, and hand-building a full calendar-grid
-  widget is a materially larger scope than anything else in this issue.
-  Flag if a specific mechanism is mandated.
-- **Default payer selection in add mode**: `expense-form.html`'s mockup
-  shows "Alice Chen" pre-filled, but neither
-  `specs/features/expense-splitter-poc.md` nor the contract specifies a
-  default payer (only participants have a stated default — "everyone").
-  This spec assumes no default (an empty "Select a person" placeholder,
-  Scope item 16) since there's no "current user" concept in this
-  single-user tool to default to. Flag if the first person in the list (or
-  some other rule) should be pre-selected instead.
-- **Edit-mode copy**: the mockups only show the add-expense variant. This
-  spec assumes "Edit expense" as the modal/sheet title and reuses "Save
-  expense"/"Save" as the button label unchanged in edit mode (Scope items
-  6, 9). Flag if different copy (e.g. "Save changes") is wanted for edit.
-- **Backdrop-click and Escape-key close behavior**: not demonstrated by the
-  static mockups (which show no interactivity). This spec assumes both
-  are standard modal-dismissal triggers, in addition to the X icon and
-  Cancel button (Scope item 3, Acceptance criterion 12). Flag if either
-  should be disabled (e.g. to prevent accidental data loss on a filled-out
-  form).
-- **Error/validation-state visual design**: undesigned per
-  `_docs/design-system.md`'s "What's not covered yet" for this exact
-  screen. This spec leaves the inline error copy/styling to the
-  implementer (Scope item 24) as long as the form doesn't silently clear
-  or close on failure. Flag if a specific treatment is required.
-- **Refetch-after-save vs. optimistic/local list update**: this spec
-  assumes `ExpensesView.vue` re-fetches `GET /expenses` after a successful
-  save (Scope item 29) rather than re-implementing the contract's sort
-  order client-side to splice the new/edited expense in locally. Simpler
-  and less error-prone, but does mean one extra network round-trip per
-  save. Flag if a local-splice approach is preferred instead.
+- **Hard sequencing dependency on issues #1, #3, #4, and #5**: resolved by
+  events and orchestration decision — #1 and #3 have merged, and a human
+  chose the sequencing where #6 starts only after #5 merges (which itself
+  starts only after #4 merges). So all four prerequisites are guaranteed
+  landed before #6's implementation begins; the "flag as blocked" fallback
+  in acceptance criterion 1 is not expected to trigger.
+- **Custom select/date control interaction mechanism**: confirmed. A human
+  reviewed this question (previously open) and chose the simpler of the
+  two options: a custom dropdown listbox for Paid by, and a native
+  `<input type="date">` visually hidden/styled behind the custom-styled
+  box for Date (not a hand-built calendar-grid widget). This keeps the
+  browser's native date-picker UX while matching the closed-state box
+  styling design-system.md requires.
+- **Default payer selection in add mode**: confirmed. A human reviewed
+  this question (previously open) and confirmed the stated default: no
+  default — an empty "Select a person" placeholder, since there's no
+  "current user" concept in this single-user tool.
+- **Edit-mode copy**: not separately raised for human review —
+  low-stakes wording. Stands as pm's assumed default: "Edit expense" as
+  the title, "Save expense"/"Save" reused unchanged as the button label.
+- **Backdrop-click and Escape-key close behavior**: confirmed. A human
+  reviewed this question (previously open) and confirmed the stated
+  default: both are standard modal-dismissal triggers, same as the X icon
+  and Cancel button — no special handling to prevent discarding an
+  unsaved, filled-out form.
+- **Error/validation-state visual design**: confirmed. A human reviewed
+  this question (previously open) and chose a consistent house style over
+  per-implementer discretion: `_docs/design-system.md`'s new "Inline error
+  text" component, applied identically across issues #4/#5/#6.
+- **Refetch-after-save vs. optimistic/local list update**: not separately
+  raised for human review — the spec's own reasoning (simpler, less
+  error-prone, avoids re-implementing sort order client-side) is sound.
+  Stands as pm's assumed default: refetch `GET /expenses` after save.

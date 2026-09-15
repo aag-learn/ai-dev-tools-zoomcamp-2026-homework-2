@@ -391,60 +391,37 @@ behavior table):
 
 ## Open questions
 
-- **Hard sequencing dependency on issues #1 and #3**: as of this
-  grooming, neither `openapi/openapi.yaml` nor `frontend/` exist in this
-  repo. This spec assumes both land — specifically issue #3's acceptance
-  criteria 10–12, themselves gated on #1 — before this issue's work
-  begins. Acceptance criterion 1 makes that gate explicit, same pattern as
-  `specs/groomed/4-people-management-ui.md`.
+- **Hard sequencing dependency on issues #1 and #3**: resolved by events —
+  both have since merged.
 - **Undeclared cross-dependency on issue #4 (or at least on a `GET
-  /people` mock handler)**: the GitHub issue lists dependencies as
-  "#1, #2, #3" only, but this screen cannot resolve payer/participant
-  names without `GET /people` data. This spec resolves the gap by having
-  this issue reuse issue #4's handler if it's already landed, or stand up
-  a minimal one itself otherwise (Scope item 2) — so implementation isn't
-  blocked either way. Flag if a human would rather formally add #4 as a
-  declared dependency on the GitHub issue instead of leaving this
-  implementation-level workaround.
-- **No confirmation dialog before delete**: `_docs/design-system.md` and
-  the mockups don't show one, so this spec assumes the delete icon button
-  deletes immediately (Scope item 18), matching how the mockups render it
-  as a plain icon button with no modal affordance. Flag if a
-  confirm-before-delete interaction is actually wanted — that would be a
-  design change beyond what's mocked today.
-- **Empty-state design**: `_docs/design-system.md` explicitly lists "zero
-  expenses" as undesigned. This spec assumes a minimal muted-text row
-  inside the existing list container (see "Edge cases considered"),
-  mirroring the interim default issue #4 used for zero people. Flag if a
-  real empty-state design is wanted before implementation.
-- **Error/validation-state design for a failed delete**: undesigned for
-  this screen (design-system.md only calls this out for the expense
-  form). This spec leaves the exact visual treatment (inline text, toast,
-  etc.) to the implementer as long as the row isn't silently removed;
-  flag if a specific treatment is required.
-- **Rendering inert edit/add controls vs. hiding them**: this spec assumes
-  the "Add expense" button and each row's edit icon should still render
-  (matching the mockups' "Expense row"/"Page header" components exactly)
-  even though clicking them does nothing until issue #6 lands, rather
-  than hiding them until #6 is ready. Flag if hiding them until #6 lands
-  is actually preferred — that would change Scope item 20 and Acceptance
-  criterion 11.
-- **Disabled/hover styling for icon buttons**: no hover-state visual is
-  specified in `_docs/design-system.md`'s "Icon button" section beyond a
-  note that a real implementation should add hover feedback the static
-  mockup doesn't show. Assumed a standard Tailwind `hover:bg-slate-100`
-  (or similar subtle) treatment; flag if a specific style is required.
-- **Per-row `aria-label` scoped to desktop only, not tablet/mobile**:
-  Acceptance criterion 16 mandates `"Edit {description}"`/`"Delete
-  {description}"` accessible names only for the `lg:` (desktop) edit/
-  delete buttons, per the gap identified while grooming
-  `specs/groomed/16-end-to-end-playwright-test-suite.md` (its e2e suite
-  runs only at Playwright's default desktop-sized viewport, per that
-  spec's Out of scope). Since Scope item 7 already says tablet reuses
-  "the same header/row structure as desktop" for the same markup, an
-  implementation that shares row markup across `md:`/`lg:` will likely
-  carry these labels onto tablet's buttons for free; that's acceptable
-  but not separately required here. This spec does not mandate an
-  equivalent labeled pattern for the mobile two-line row's edit/delete
-  buttons (Scope item 10) — flag if mobile accessible names for these two
-  buttons are also wanted, e.g. for a future mobile-viewport e2e pass.
+  /people` mock handler)**: resolved by orchestration decision, not a spec
+  change — a human reviewed the parallel-execution plan for issues #4–#7
+  and chose to implement #4 and #7 in parallel first, then start #5 only
+  after #4 merges. That means #5 will always find issue #4's real `GET
+  /people` handler already landed at implementation time, so the "stand up
+  a minimal one itself" branch of Scope item 2 is not expected to trigger
+  in practice — it stays in the spec as a documented fallback, not as the
+  live path.
+- **No confirmation dialog before delete**: not separately raised for
+  human review — low-stakes, matches the mockups exactly, no product
+  ambiguity. Stands as pm's assumed default: the delete icon button
+  deletes immediately, no confirmation dialog.
+- **Empty-state design**: confirmed. A human reviewed this question
+  (previously open) and confirmed the stated default: a minimal muted-text
+  row (see `_docs/design-system.md`'s new "Empty list row" component).
+- **Error/validation-state design for a failed delete**: confirmed. A
+  human reviewed this question (previously open) and chose a consistent
+  house style over per-implementer discretion: `_docs/design-system.md`'s
+  new "Inline error text" component, applied identically across issues
+  #4/#5/#6.
+- **Rendering inert edit/add controls vs. hiding them**: not separately
+  raised for human review — the spec's reasoning (match the mockups'
+  visual fidelity, wire the controls for real in #6) is sound and
+  low-risk. Stands as pm's assumed default.
+- **Disabled/hover styling for icon buttons**: not separately raised for
+  human review — low-stakes, cosmetic. Stands as pm's assumed default: a
+  standard Tailwind `hover:bg-slate-100` (or similar subtle) treatment.
+- **Per-row `aria-label` scoped to desktop only, not tablet/mobile**: not
+  separately raised for human review — already justified by
+  `specs/groomed/16-end-to-end-playwright-test-suite.md`'s desktop-only
+  e2e scope. Stands as pm's assumed default.

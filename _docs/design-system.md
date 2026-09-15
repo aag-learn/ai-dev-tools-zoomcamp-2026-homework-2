@@ -126,6 +126,22 @@ custom-styled to stay visually consistent with the rest of the form.
 `overflow-hidden`; rows divided by a `slate-100` bottom border, last
 row has none.
 
+**Empty list row** — interim treatment for a list with zero items
+(zero people, zero expenses, zero balances), adopted when issues #4/
+#5/#6/#7 were implemented since no real empty-state design exists yet.
+A single row, styled like any other row in the "List/card container"
+but with muted `slate-500` text only (no avatar, no action), reading
+"No {items} yet — {call to action}." (e.g. "No people yet — add one
+above."). Not a fuller illustration/empty-state pattern — revisit if
+one is designed later.
+
+**Inline error text** — interim treatment for a failed `POST`/`PUT`/
+`DELETE` (design-system.md previously had no coverage here either).
+Small `text-sm text-rose-600` text placed near the control/row that
+triggered the failed action — not a toast, not a full-form banner.
+Used consistently across the People add-form, Expense list's delete
+action, and the Expense add/edit form.
+
 **Person row** — 36px avatar circle (`bg-indigo-50`, `text-indigo-700`
 initial) + name, 15px/500.
 
@@ -208,9 +224,13 @@ these are real layout changes, see the mockups):
 
 ## What's not covered yet
 
-- Empty states (zero people, zero expenses) — the mockups only show a
-  populated group.
-- Error/validation states on the expense form.
+- A real empty-state design (zero people, zero expenses, zero
+  balances) — the mockups only show a populated group. The "Empty
+  list row" component above is only an interim treatment adopted
+  during #4/#5/#6/#7, not a real design.
+- A real error/validation-state design — the "Inline error text"
+  component above is only an interim treatment adopted during #4/#5/#6,
+  not a real design.
 - Loading states.
 - Truncation/overflow rules for long descriptions or long participant
   lists — the mobile expense row's meta line correctly ellipsis-truncates

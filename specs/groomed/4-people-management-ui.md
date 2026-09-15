@@ -242,35 +242,27 @@ below):
 
 ## Open questions
 
-- **Hard sequencing dependency on issues #1 and #3**: as of this grooming,
-  neither `openapi/openapi.yaml` nor `frontend/` exist in this repo.
-  `specs/features/expense-splitter-poc.md`'s build order requires the
-  contract (#1) to close before the frontend phase (#3, then this issue)
-  starts, so this spec assumes both land — specifically issue #3's
-  acceptance criteria 10–12, which are themselves gated on #1 — before this
-  issue's work begins. Acceptance criterion 1 makes that gate explicit and
-  blocks the rest of the work if it isn't satisfied at implementation time.
-  If a human wants a stopgap (e.g. hand-typed interim interfaces mirroring
-  the frozen `Person`/`PersonCreate` shape) instead of waiting, that's a
-  deviation from the documented phase ordering and needs explicit sign-off —
-  this spec does not assume that.
-- **Empty-state design**: `_docs/design-system.md` explicitly lists "zero
-  people" as undesigned. This spec assumes a minimal muted-text row inside
-  the existing list container (see "Edge cases considered") rather than
-  inventing a fuller empty-state illustration/CTA. Flag if a real
-  empty-state design is wanted before implementation.
-- **Error/validation-state design for a failed add**: undesigned for this
-  screen (design-system.md only calls this out for the expense form). This
-  spec leaves the exact visual treatment (inline text, toast, etc.) to the
-  implementer as long as the input isn't silently cleared and no phantom row
-  is added; flag if a specific treatment is required.
-- **Disabled-button styling**: no disabled-state visual is specified in
-  `_docs/design-system.md`'s "Primary button" section. Assumed a standard
-  reduced-opacity/`cursor-not-allowed` treatment via Tailwind's `disabled:`
-  variant; flag if a specific style is required.
-- **Shared people-list state across screens**: assumed each screen (this
-  one, and later #6) independently calls `GET /people` rather than reading
-  from a shared store, since `_docs/architecture.md` doesn't mention a
-  state-management library. Flag if a store is actually wanted now to avoid
-  redundant fetches or keep the list consistent within a session without
-  extra requests.
+- **Hard sequencing dependency on issues #1 and #3**: resolved by events —
+  both #1 and #3 have since merged, so `frontend/src/api/client.ts` and
+  `frontend/src/api/schema.d.ts` exist. The prerequisite gate in Scope
+  item 1 / acceptance criterion 1 is satisfied; criteria 2–15 apply as
+  written.
+- **Empty-state design**: confirmed. A human reviewed this question
+  (previously open) and confirmed the stated default: a minimal muted-text
+  row (see `_docs/design-system.md`'s new "Empty list row" component,
+  added while resolving this question across issues #4/#5/#6/#7).
+- **Error/validation-state design for a failed add**: confirmed. A human
+  reviewed this question (previously open) and chose a consistent house
+  style over per-implementer discretion: `_docs/design-system.md`'s new
+  "Inline error text" component (small `text-sm text-rose-600` near the
+  form), applied identically across issues #4/#5/#6.
+- **Disabled-button styling**: not separately raised for human review —
+  low-stakes, cosmetic, no product impact. Stands as pm's assumed default:
+  a standard reduced-opacity/`cursor-not-allowed` treatment via Tailwind's
+  `disabled:` variant.
+- **Shared people-list state across screens**: confirmed. A human reviewed
+  this question (previously open) and chose to keep pm's assumed default
+  for now — no shared store, each screen independently calls `GET
+  /people` — but asked that a follow-up feature be filed via planner to
+  revisit shared frontend state management later. That follow-up is
+  tracked separately, not part of this issue's scope.
