@@ -71,16 +71,26 @@ issue rather than a feature-scoped list.
   planner and pm is unaffected by this — it keeps landing as direct
   commits on `main`, same as always. This split (code reviewed,
   specs not) is deliberate, not an oversight.
-- **Never make a "direct to main" commit on top of an unmerged
-  `issue-<N>` bookmark's tip.** In a single (non-parallel) working
-  copy, `@` is shared: after a subagent finishes work on `issue-<N>`,
-  `@` sits on that bookmark's commit, not `main`'s. A docs/spec commit
-  made there and then pushed as `main` silently carries the unreviewed
-  bookmark's commits into `main` too — bypassing PR review entirely,
-  even though nothing about the commit itself looked wrong. Before any
-  direct-to-`main` commit, confirm `@`'s ancestry is actually `main`
-  (`jj log -r 'main..@'` should be empty, or just run `jj new main`
-  first).
+- **Never make a "direct to main" commit unless `main` is actually an
+  ancestor of `@`.** In a single (non-parallel) working copy, `@` is
+  shared: after a subagent finishes work on `issue-<N>`, or after a PR
+  merges on GitHub and `jj git fetch` moves the `main` bookmark forward,
+  `@` does not automatically follow — it's left wherever it last was.
+  Committing there and pushing the result as `main` either (a) silently
+  carries an unreviewed bookmark's commits into `main`, bypassing PR
+  review, or (b) creates a divergent sibling of `main` that `jj bookmark
+  set main` will refuse to move to ("refusing to move bookmark backwards
+  or sideways") — or worse, `--allow-backwards` would force it through
+  and actually lose the merged PR's commits from `main`. Before any
+  direct-to-`main` commit, don't just check that `@` has no unique
+  commits missing from `main`'s history (`jj log -r 'main..@'` being
+  empty does **not** prove this — two sibling branches off a shared
+  ancestor satisfy that too, which is exactly how this went wrong once
+  already). Check the other direction instead: confirm `main` is an
+  ancestor of `@` with `jj log -r 'main & ::@'` — it must print `main`'s
+  own commit, not come back empty. If it's empty (or you're unsure),
+  don't try to rebase your way out blind; just run `jj new main` first
+  to get a clean, guaranteed-correct starting point.
 - Once qa-engineer PASSes and the orchestrator's own acceptance-criteria
   recheck confirms it, the orchestrator — not software-engineer —
   pushes the bookmark and opens the PR, then notifies the user.
