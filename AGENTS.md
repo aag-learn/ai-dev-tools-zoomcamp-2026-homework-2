@@ -9,6 +9,7 @@ more specific convention is defined in `_docs/architecture.md`.
 
 Backend (FastAPI, in `backend/`):
 - `cd backend && uv sync` - install dependencies
+- `cd backend && uv run fastapi dev src/app/main.py` - run the dev server
 - `cd backend && uv run pytest` - the whole suite
 - `cd backend && uv run pytest tests/test_home.py` - one test file
 
