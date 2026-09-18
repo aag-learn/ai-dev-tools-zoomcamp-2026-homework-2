@@ -143,3 +143,111 @@ groomed spec's acceptance criteria — the above is my own account of
 what was built and why. Visual fidelity against the mockups was checked
 by reading the rendered Tailwind classes against `people.html`/
 `people-mobile.html`, not by rendering the app in a real browser.
+
+## Response to PR #21 review
+
+The review (positive overall, "ship it after deciding on 1 and 2") raised
+six numbered findings. Per-finding disposition below.
+
+### 1. No double-submit guard — FIXED
+
+Agreed, and cheap. Added a `submitting` ref in `PeopleView.vue`: set to
+`true` at the top of `handleSubmit` (after the existing blank-input
+early-return), reset in a `finally` block, and folded into both submit
+buttons' `:disabled="!canSubmit || submitting"`. `handleSubmit` itself
+also bails early if `submitting.value` is already true, so even a
+programmatic second call (not just a disabled-button click) is a no-op.
+Covered by a new test: `'ignores a second submit while the first POST
+/people is still in flight (no double-add)'`, which holds the mocked
+`POST` open via an unresolved promise, clicks twice, asserts exactly one
+`POST` fired, then resolves and asserts exactly one row was added.
+
+### 2. Network-level fetch failures unhandled — FIXED
+
+Agreed with the review's own caveat: `openapi-fetch` only returns
+`{ data, error }` for HTTP-status responses and throws on a transport
+failure. Wrapped both `client.GET('/people')` (in `loadPeople`) and
+`client.POST('/people', ...)` (in `handleSubmit`) in `try/catch`.
+
+- `loadPeople`'s catch is a silent no-op (list stays empty) — the spec
+  has no inline-error design for a failed *initial load*, only for a
+  failed `POST` (see "Edge cases considered" → "Failed `POST
+  /people`"), so I didn't invent one. A comment in the code says why.
+- `handleSubmit`'s catch sets the same `error.value` message as the
+  existing non-2xx path, since the spec's edge case for a failed POST
+  says "a thrown error" explicitly and doesn't distinguish it from a
+  mocked non-2xx for UI purposes.
+
+Test: reusing the review's own suggested technique — `server.close()`
+before the click so the request falls through MSW to a real `fetch`
+against an address nothing listens on (genuine transport failure,
+not a mocked status), then `server.listen(...)` again in a `finally` to
+restore state for later tests. This is still "MSW is the only mocking
+mechanism" in spirit: no hand-rolled fetch/stub is introduced, the real
+network stack is just allowed to fail naturally for one request. Ran
+this test standalone and in the full suite repeatedly; it resolves
+near-instantly (loopback connection-refused, not a DNS/timeout wait) and
+isn't flaky in this environment.
+
+### 3. Add-person input has no accessible name — FIXED
+
+Agreed — placeholders aren't an accessible name. Added
+`aria-label="Add a person's name"` to the input, matching its
+placeholder text, mirroring the existing `aria-label="Add person"`
+pattern on the mobile icon button. Covered by a new test asserting
+`getByRole('textbox', { name: "Add a person's name" })` resolves.
+
+### 4. Inline error persists until the next submit — FIXED
+
+Agreed this is a judgment call (design-system.md defers real
+error/validation design), but it's a standard, cheap pattern and
+strictly improves UX with no spec conflict. Added a `watch(newName, ...)`
+that clears `error.value` whenever the input changes. Covered by a new
+test: submit an invalid name, confirm the error appears, edit the input,
+confirm the error is gone.
+
+### 5. Test nits — mixed (fixed 2, skipped 2)
+
+- `document.querySelector('.text-rose-600')` → **FIXED**. Replaced with
+  `screen.getByText("Couldn't add that person. Please try again.")` in
+  the existing failed-POST test, and used the same pattern in all new
+  error-related tests. Cheap, and removes a CSS-class coupling.
+- Enter-key submit path (Scope item 11) → **FIXED**. Added a test that
+  updates the input then `fireEvent.submit`s the enclosing `<form>`
+  (the standard Testing-Library way to simulate "Enter submits a form"
+  under jsdom, which doesn't synthesize the browser's implicit-submission
+  behavior from a raw keydown) and asserts the row is added and the
+  input clears.
+- Avatar assertions (`getByText('A')`) brittleness → **SKIPPED**. Real,
+  but pre-existing and out of scope for a review-response pass — fixing
+  it means restructuring the existing initial-render test's queries
+  (e.g. scoping to the row container), which is unrelated to any of the
+  four substantive findings and risks broadening this change beyond
+  "respond to review." Leaving as-is; worth a follow-up if it ever
+  actually causes a false pass.
+- Responsive test asserting classes rather than two rendered viewports →
+  **SKIPPED**. The review itself calls this "fine and pragmatic, just
+  noting" — not a suggested change, just an acknowledged tradeoff (and
+  the same pattern issue #3's own tests already established). Nothing to
+  fix.
+
+### 6. Coordination with #7 — acknowledged, no code change here
+
+This is a cross-PR sequencing note, not something actionable inside
+`issue-4`'s diff. No `client.ts` change was made in this PR (confirmed
+unchanged), so the reconciliation the review describes (#7 dropping its
+`client.ts` change and picking up `setup.ts`/`vitest.config.ts` on
+rebase once #21 lands) is still exactly the situation on disk. Flagging
+here for whoever merges #7 next, per the review's own suggested plan;
+not a code change in scope for this response.
+
+## Verification after review response
+
+`cd frontend && npm test` → 3 files, 22 tests, all passing (17 prior +
+1 double-submit-guard test + 1 transport-failure test + 1
+stale-error-clears test + 1 Enter-key-submit test + 1 accessible-name
+test = 22; the pre-existing failed-POST test was edited in place, not
+added, so it's not a new count).
+
+`cd frontend && npm run build` → exits 0 (`vue-tsc -b && vite build`),
+same as before.

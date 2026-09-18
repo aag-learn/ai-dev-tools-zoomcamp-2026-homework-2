@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import client from '../api/client'
 import type { components } from '../api/schema.d.ts'
 import PlusIcon from '../components/icons/PlusIcon.vue'
@@ -9,13 +9,24 @@ type Person = components['schemas']['Person']
 const people = ref<Person[]>([])
 const newName = ref('')
 const error = ref<string | null>(null)
+const submitting = ref(false)
 
 const canSubmit = computed(() => newName.value.trim().length > 0)
 
+watch(newName, () => {
+  error.value = null
+})
+
 async function loadPeople() {
-  const { data } = await client.GET('/people')
-  if (data) {
-    people.value = data
+  try {
+    const { data } = await client.GET('/people')
+    if (data) {
+      people.value = data
+    }
+  } catch {
+    // Network-level failure (e.g. connection refused): leave the list
+    // empty rather than crash with an unhandled rejection. No inline
+    // error UI for the initial load is specified by the spec.
   }
 }
 
@@ -23,20 +34,27 @@ onMounted(loadPeople)
 
 async function handleSubmit() {
   const trimmed = newName.value.trim()
-  if (!trimmed) return
+  if (!trimmed || submitting.value) return
 
   error.value = null
-  const { data, error: requestError } = await client.POST('/people', {
-    body: { name: trimmed },
-  })
+  submitting.value = true
+  try {
+    const { data, error: requestError } = await client.POST('/people', {
+      body: { name: trimmed },
+    })
 
-  if (requestError || !data) {
+    if (requestError || !data) {
+      error.value = "Couldn't add that person. Please try again."
+      return
+    }
+
+    people.value.push(data)
+    newName.value = ''
+  } catch {
     error.value = "Couldn't add that person. Please try again."
-    return
+  } finally {
+    submitting.value = false
   }
-
-  people.value.push(data)
-  newName.value = ''
 }
 
 function initialOf(name: string) {
@@ -57,7 +75,7 @@ function initialOf(name: string) {
         <button
           type="submit"
           aria-label="Add person"
-          :disabled="!canSubmit"
+          :disabled="!canSubmit || submitting"
           class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white disabled:cursor-not-allowed disabled:opacity-50 md:hidden"
         >
           <PlusIcon :size="18" />
@@ -70,11 +88,12 @@ function initialOf(name: string) {
           type="text"
           maxlength="100"
           placeholder="Add a person's name"
+          aria-label="Add a person's name"
           class="w-full flex-1 rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900"
         />
         <button
           type="submit"
-          :disabled="!canSubmit"
+          :disabled="!canSubmit || submitting"
           class="hidden items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 md:flex"
         >
           <PlusIcon :size="16" />
