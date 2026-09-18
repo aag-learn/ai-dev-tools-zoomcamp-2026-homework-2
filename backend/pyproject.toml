@@ -1,0 +1,19 @@
+[project]
+name = "tally-backend"
+version = "0.1.0"
+description = "Tally backend (FastAPI)"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi[standard]",
+    "sqlalchemy",
+    "alembic",
+    "pydantic-settings",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
