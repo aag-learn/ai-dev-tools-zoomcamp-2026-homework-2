@@ -195,3 +195,50 @@ in a real browser at each breakpoint. In particular, the padding/margin
 override described above (Scope items 4/7) is my own derivation from
 the mockups' pixel values and is not verified against an actual
 rendered layout -- worth a real-browser spot-check.
+
+## QA fix round: desktop icon button size (Scope item 5)
+
+qa-engineer's first pass found 15/16 acceptance criteria passing, plus
+all four self-flagged concerns from the round above checked out fine.
+The one confirmed defect: the desktop/tablet edit/delete icon buttons'
+shared class list was `h-[30px] w-[30px] ... md:h-[28px] md:w-[28px]`.
+Because the whole row block only renders at `md:` and up (`hidden ...
+md:flex`), the unprefixed base `h-[30px]`/`w-[30px]` never actually
+applied at any visible viewport -- `md:h-[28px]`/`md:w-[28px]` (active
+at >=768px) won at *all* widths >=768px, including desktop (>=1024px),
+since there was no `lg:` rule to override it back. qa-engineer verified
+this by inspecting the compiled `dist` CSS output directly, not just
+the source classes.
+
+**Fix**: added an explicit `lg:h-[30px] lg:w-[30px]` to both the edit
+and delete buttons' class lists in `ExpensesView.vue`, so the intended
+three-tier sizing (30px base -- dead/unused since the block never
+renders unprefixed, 28px at `md:`-only i.e. tablet, 30px at `lg:` i.e.
+desktop) actually resolves correctly.
+
+**Verification this time**: ran `npm run build` again and inspected
+`frontend/dist/assets/*.css` directly (not just the source). Confirmed:
+
+```
+@media (width>=48rem){ ... .md\:h-\[28px\]{height:28px}.md\:w-\[28px\]{width:28px} ... }
+@media (width>=64rem){ ... .lg\:h-\[30px\]{height:30px}.lg\:w-\[30px\]{width:30px} ... }
+```
+
+The `md:` (48rem = 768px) block appears before the `lg:` (64rem =
+1024px) block in the compiled stylesheet. At widths >=1024px both media
+queries match; since both selectors have identical specificity (single
+class each), CSS resolves the tie by *source order* -- the later `lg:`
+rule wins, giving 30px at desktop and 28px only in the 768-1023px
+tablet band. This is the same kind of compiled-output check qa-engineer
+used to catch the original bug, applied to confirm the fix actually
+holds post-build rather than trusting the source class list looks
+right.
+
+Also added a new test case in `ExpensesView.test.ts` ("edit/delete icon
+buttons are 28px at tablet (md:) and 30px at desktop (lg:), with an
+explicit lg: override so it wins over md: at desktop widths") asserting
+both buttons carry `md:h-[28px]`, `md:w-[28px]`, `lg:h-[30px]`, and
+`lg:w-[30px]` in their class list, following the same class-presence
+assertion pattern as the existing truncation/padding tests. `npm test`
+-> 4 files, 37 tests, all passing (17 in `ExpensesView.test.ts`, up from
+16). `npm run build` -> exits 0.

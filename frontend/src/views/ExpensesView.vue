@@ -160,14 +160,14 @@ async function handleDelete(expense: Expense) {
               <button
                 type="button"
                 :aria-label="`Edit ${expense.description}`"
-                class="flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 md:h-[28px] md:w-[28px]"
+                class="flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 md:h-[28px] md:w-[28px] lg:h-[30px] lg:w-[30px]"
               >
                 <PencilIcon :size="16" />
               </button>
               <button
                 type="button"
                 :aria-label="`Delete ${expense.description}`"
-                class="flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 md:h-[28px] md:w-[28px]"
+                class="flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 md:h-[28px] md:w-[28px] lg:h-[30px] lg:w-[30px]"
                 @click="handleDelete(expense)"
               >
                 <TrashIcon :size="16" />

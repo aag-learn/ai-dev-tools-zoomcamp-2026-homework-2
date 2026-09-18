@@ -315,6 +315,25 @@ describe('ExpensesView', () => {
     expect(screen.getByRole('button', { name: 'Delete Internet' })).toBeTruthy()
   })
 
+  it('edit/delete icon buttons are 28px at tablet (md:) and 30px at desktop (lg:), with an explicit lg: override so it wins over md: at desktop widths', async () => {
+    await seedDefaultPeople()
+    render(ExpensesView)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('expense-row-1')).toBeTruthy()
+    })
+
+    const editButton = screen.getByRole('button', { name: 'Edit Groceries' })
+    const deleteButton = screen.getByRole('button', { name: 'Delete Groceries' })
+
+    for (const button of [editButton, deleteButton]) {
+      expect(button.className).toContain('md:h-[28px]')
+      expect(button.className).toContain('md:w-[28px]')
+      expect(button.className).toContain('lg:h-[30px]')
+      expect(button.className).toContain('lg:w-[30px]')
+    }
+  })
+
   it('renders an empty-state row instead of an empty white box when there are zero expenses', async () => {
     server.use(http.get('/expenses', () => HttpResponse.json([])))
     render(ExpensesView)
