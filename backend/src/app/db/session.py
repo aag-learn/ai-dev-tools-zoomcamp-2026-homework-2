@@ -1,6 +1,8 @@
+from collections.abc import Iterator
 from urllib.parse import urlsplit
 
 from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import Settings
@@ -22,10 +24,10 @@ engine = create_engine(
     settings.database_url, connect_args=_connect_args_for(settings.database_url)
 )
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(autoflush=False, bind=engine)
 
 
-def get_db():
+def get_db() -> Iterator[Session]:
     db = SessionLocal()
     try:
         yield db

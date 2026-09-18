@@ -19,14 +19,14 @@ from app.db.session import get_db
 from app.main import app
 
 
-@pytest.fixture()
+@pytest.fixture
 def db_session():
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    TestingSessionLocal = sessionmaker(autoflush=False, bind=engine)
 
     Base.metadata.create_all(bind=engine)
 
@@ -39,7 +39,7 @@ def db_session():
         engine.dispose()
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(db_session):
     def override_get_db():
         try:
