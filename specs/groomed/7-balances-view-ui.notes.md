@@ -152,3 +152,41 @@ array".
   uses)").
 - Did not add any lint tooling/config — none exists in the repo yet and
   none was requested.
+
+## Rebase-conflict resolution (post-hoc, after #4/PR #21 merged)
+
+Issue #7 was built in parallel with issue #4 ("People management UI",
+PR #21). Both branched off the same empty MSW scaffold, so rebasing
+`issue-7` onto `main` (after #21 merged) produced genuine conflicts in two
+files under `frontend/src/mocks/`, both resolved by hand:
+
+- **`handlers.ts`**: #4 added the real `GET`/`POST /people` handlers (plus
+  the in-memory `people` store and `resetPeopleStore()`), #7 added the real
+  `GET /balances` handler (plus the static `balances` array) — both as
+  additions to the same starting empty array, not competing edits to the
+  same logic. Resolved by taking the union: both type imports
+  (`Person`/`PersonCreate` and `Balance`), both pieces of state (the
+  `people`/`nextPersonId` store + `resetPeopleStore()`, and the static
+  `balances` array), and all three routes registered in one `handlers`
+  array.
+- **`setup.ts`**: both #4 and #7 independently fixed the same underlying
+  bug (MSW's fetch patch needs to happen synchronously before `beforeAll`,
+  or `openapi-fetch`'s client captures the unpatched `fetch` — see "Two
+  pre-existing test-infrastructure bugs fixed" above for #7's original
+  writeup of this). #4's version is a strict superset: same
+  synchronous-listen fix, plus an `AbsoluteURLRequest` shim working around
+  jsdom's `Request` requiring absolute URLs (a related but distinct
+  problem from #7's `client.ts` `baseUrl` fix above — #4 solves it at the
+  `Request`-construction layer instead). Resolved by dropping #7's
+  redundant synchronous-listen-only version entirely and taking #4's file
+  as-is, per the resolution PR #21's own review had already anticipated
+  for this exact conflict.
+
+After resolving both files and squashing into the implementation-notes
+commit, ran `npm test` (32/32 passing across all 4 suites, including
+`BalancesView.test.ts` and `PeopleView.test.ts` together) and `npm run
+build` (passes, including `vue-tsc` type-checking) from `frontend/` — no
+further adjustments were needed; the two features' MSW handlers and mock
+state don't interfere with each other (`resetPeopleStore` only resets the
+`people`/`nextPersonId` module state, `balances` is a separate constant
+array untouched by any handler).
