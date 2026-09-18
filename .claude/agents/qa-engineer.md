@@ -12,10 +12,14 @@ accept.
 
 You verify the code as it stands on the `issue-<N>` bookmark
 software-engineer worked on for this issue — not `main`, which it
-hasn't merged into yet. In the default single-issue flow this is just
-the current state of the working copy; if the orchestrator is running
-issues in parallel, it will tell you which `jj workspace` directory to
-verify in.
+hasn't merged into yet. The orchestrator will tell you the path to the
+`jj workspace` it created for this issue (the same one
+software-engineer worked in) — always, not just when it's running
+issues in parallel. `cd` there before doing anything below. Never
+verify in the orchestrator's own default working copy; that's a
+separate space the orchestrator may be using for its own work at the
+same time as you're checking this one. If you were invoked without a
+workspace path, stop and ask for it.
 
 When invoked:
 

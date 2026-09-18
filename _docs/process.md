@@ -50,18 +50,31 @@ issue rather than a feature-scoped list.
 1. Pick the next open issue (ordering by label/milestone/project priority). If none are open, stop and suggest invoking the planner subagent to add items to the backlog.
 2. If the issue is still labeled `needs-triage`, invoke pm to groom it before anything else.
 3. Read the groomed spec's "Open questions" section. If it says `None`, proceed straight to step 4. Otherwise, present the open questions to the user and wait for them to confirm pm's stated assumptions or correct them — do not invoke software-engineer until they've responded. This is the checkpoint that catches a wrong assumption before code gets built on it, not after.
-4. Before creating the bookmark, reset the orchestrator's own working
-   copy to `main`'s actual current tip (`jj new main`) — never assume
-   `@` is already there. After a subagent has been working on a
-   different bookmark, the shared working copy is left sitting on top
-   of *that* bookmark's tip, not `main`'s. Create a bookmark `issue-<N>`
-   at the current tip of `main`. Invoke software-engineer to implement
-   it there — its commits land on that bookmark, never directly on
-   `main`.
-5. Invoke qa-engineer to verify it, against that same bookmark's state.
+4. Create a bookmark `issue-<N>` at `main`'s current tip. Then give
+   software-engineer its own `jj workspace` to work in — never the
+   orchestrator's own working copy: `jj workspace add
+   ../<repo-name>-issue-<N>`, then from inside that new directory, `jj
+   new issue-<N>` to position its working copy on the bookmark. Invoke
+   software-engineer and tell it that workspace's path; its commits
+   land on the `issue-<N>` bookmark from inside that workspace, never
+   directly on `main` and never in the orchestrator's own default
+   working copy. This is unconditional — not just for parallel runs
+   (see "Running multiple issues concurrently" below) — because it's
+   what keeps the orchestrator's own `@` free: safe for the
+   orchestrator to make its own commits (docs, specs,
+   agent-definition changes, whatever else comes up) while
+   software-engineer is mid-task, without a `jj commit` snapshot in
+   one working copy sweeping up the other's in-progress edits. (This
+   is exactly the failure mode that motivated the rule: the
+   orchestrator once edited files directly in the shared working copy
+   while software-engineer was concurrently committing there, and a
+   `jj commit` silently swept the orchestrator's unrelated edits into
+   software-engineer's commit, producing a divergent change that took
+   manual `jj split`/`jj abandon` surgery to untangle.)
+5. Invoke qa-engineer to verify it, in that same workspace.
 6. On FAIL, go back to step 4, passing qa-engineer's verdict and evidence as input.
 7. On PASS, re-check the acceptance criteria yourself. Push the `issue-<N>` bookmark and open a PR against `main` (`gh pr create`), linking the groomed spec and QA verdict in the description as real GitHub file links (see "PR description links" below), then tell the user it's ready for review.
-8. Close the issue only once the PR is actually merged (see "Branching, review, and merging" below) — QA PASS alone is not enough to close it.
+8. Close the issue only once the PR is actually merged (see "Branching, review, and merging" below) — QA PASS alone is not enough to close it. Then `jj workspace forget <name>` and remove its directory — the workspace's only job was to hold this issue's work until it merged.
 9. Repeat until no open issues remain.
 
 ### Branching, review, and merging (code changes)
@@ -119,33 +132,34 @@ Pin to the branch/bookmark (or a specific commit SHA), not `main` —
 `main` won't have the file yet if the PR hasn't merged. This applies
 everywhere a PR body is written, not just by the orchestrator.
 
-### Parallel execution (opt-in)
+### Running multiple issues concurrently (opt-in)
 
-By default the lifecycle above processes one issue at a time in one
-working copy. Only parallelize when the user explicitly asks for it —
+Every issue already gets its own `jj workspace` per step 4 above,
+regardless of whether anything else is in flight — that per-issue
+isolation is unconditional, not the opt-in part. What's opt-in is
+running more than one issue's software-engineer/qa-engineer pair *at
+the same time*. Only do that when the user explicitly asks for it —
 never proactively, even when the dependency graph shows issues that
 look independent (see below for why).
 
-- Give each concurrently-worked issue its own `jj workspace` (`jj
-  workspace add ../<repo-name>-issue-<N>`), so multiple software-engineer/
-  qa-engineer pairs can each hold their own working-copy commit (`@`)
-  without racing on the same one. All workspaces share the same
-  underlying repo, commits, and bookmarks.
+- All workspaces share the same underlying repo, commits, and
+  bookmarks, so multiple software-engineer/qa-engineer pairs can each
+  hold their own working-copy commit (`@`) without racing on the same
+  one.
 - **Do not use the Agent tool's `isolation: "worktree"` option for
   this.** That creates a *git* worktree, which does not interoperate
   correctly with this repo's `jj` workspaces — the orchestrator sets
   up `jj workspace add` itself and hands each subagent a specific path
   to work from.
 - Each workspace still follows the bookmark/PR/review rules above —
-  parallelism changes *where* work happens, not the merge process.
-- Only parallelize issues that are genuinely independent at the file
-  level, not just administratively unblocked by the dependency graph.
-  A chain like #9→#10→#11 (each one's code depends on the previous
-  one's actual output) must never be split across workspaces just
-  because a later phase is nominally "unblocked" — that produces real
-  merge conflicts, not just extra bookkeeping.
-- After a workspace's PR is merged, `jj workspace forget <name>` and
-  remove its directory.
+  running several at once changes *where* work happens, not the merge
+  process.
+- Only run issues concurrently when they're genuinely independent at
+  the file level, not just administratively unblocked by the
+  dependency graph. A chain like #9→#10→#11 (each one's code depends
+  on the previous one's actual output) must never be split across
+  workspaces just because a later phase is nominally "unblocked" —
+  that produces real merge conflicts, not just extra bookkeeping.
 
 ### Rules
 
@@ -154,4 +168,10 @@ look independent (see below for why).
 - The software-engineer does not close the issue, push its bookmark, or open a PR — that's the orchestrator's job, once QA has passed.
 - qa-engineer does not fix the code — it only outputs PASS or FAIL, with evidence.
 - The orchestrator closes the issue only after its PR has been merged, which itself only happens after qa-engineer outputs PASS.
+- software-engineer and qa-engineer always work in a dedicated `jj
+  workspace` for the issue at hand, never in the orchestrator's own
+  default working copy — see step 4. This holds even for a single
+  issue worked on its own; it's what keeps the orchestrator's own `@`
+  safe to use for anything else (docs, specs, agent-definition edits)
+  while they're running.
 

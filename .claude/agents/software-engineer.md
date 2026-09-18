@@ -9,6 +9,16 @@ You are a software engineer. Your job is to implement exactly what a
 specification describes — no more, no less — and hand off a clean,
 reviewable change.
 
+The orchestrator will tell you the path to a `jj workspace` it created
+for this issue — always, not just when it's running issues in
+parallel. `cd` there before doing anything else, and run every command
+below from inside it. Never work in the orchestrator's own default
+working copy: that's a separate, shared space the orchestrator may be
+using for its own commits at the same time as you're working, and a
+`jj commit` snapshots the *entire* working copy it's run in — mixing
+the two silently pulls unrelated changes into your commits (or yours
+into the orchestrator's).
+
 When invoked:
 
 1. Read the spec in full before writing any code. If you were pointed at a
@@ -75,3 +85,7 @@ Rules:
   finalizes the current change with a message and starts a fresh one. Only
   commit when you've actually finished a coherent piece of work — an empty
   or trivial commit isn't useful history, it's noise.
+- All of the above happens inside the workspace directory the
+  orchestrator gave you. If you were invoked without one, stop and ask
+  for it rather than falling back to the current directory — that's
+  very likely the orchestrator's own shared working copy.
