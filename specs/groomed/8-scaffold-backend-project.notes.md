@@ -102,3 +102,72 @@ package — it's run in place via `uv run fastapi dev src/app/main.py` and
   reasoning for `__init__.py` in `api/`/`schemas/`/`models/` ("an empty
   directory alone wouldn't be tracked by git") applies equally here, even
   though the spec doesn't say so explicitly for `versions/`.
+
+## Response to PR #18 review
+
+Five findings came back on PR #18 after qa-engineer had already passed it.
+Verdict per finding:
+
+1. **Medium — `env.py` crashes on `%` in `DATABASE_URL` — FIXED.**
+   Reproduced exactly as described:
+   `config.set_main_option("sqlalchemy.url", "postgresql://user:p%40ss@...")`
+   raises `ValueError: invalid interpolation syntax` from stdlib
+   `ConfigParser`, since `Config.set_main_option()` stores the value through
+   `ConfigParser.set()`, which treats `%` as its own interpolation escape
+   character. Fixed by no longer routing the URL through
+   `config.set_main_option()`/`engine_from_config()` at all: `env.py` now
+   holds `database_url = Settings().database_url` as a plain variable and
+   passes it directly to `context.configure(url=...)` (offline) and
+   `create_engine(database_url, poolclass=pool.NullPool)` (online), neither
+   of which touches `ConfigParser`. Verified the crash is gone by re-running
+   the same repro (it now fails only at `psycopg2` driver import, which is
+   expected — no Postgres driver is in scope for this issue) and confirmed
+   `uv run alembic upgrade head` and `grep -c render_as_batch` (AC9/AC10)
+   still pass against the SQLite default.
+
+2. **Minor — AC4's `/docs` 200 not automated — FIXED.**
+   Confirmed `test_main.py` only asserted `/openapi.json`. Added
+   `test_docs_returns_200` alongside it in `backend/tests/test_main.py`,
+   using the same `client` fixture. Both pass.
+
+3. **Minor — `test_session.py`'s module-level `engine.url` assertion is
+   environment-fragile — FIXED.**
+   Confirmed: `app.db.session`'s `engine` is built once at import time from
+   the real `Settings().database_url`, so `test_engine_is_constructed_from_settings_database_url`
+   broke under e.g. `DATABASE_URL=postgres://... pytest`. Took the "fixed
+   `DATABASE_URL` in `conftest.py`" option from the review's two suggestions
+   (over dropping the assertion) since it preserves the existing coverage
+   and also enforces `_docs/testing-guidelines.md`'s isolated-SQLite-only
+   rule at the whole-suite level, not just per-fixture. `conftest.py` now
+   sets `os.environ["DATABASE_URL"] = "sqlite:///./dev.db"` before
+   `app.db.session` (or anything importing it) is first imported. Verified
+   by running the full suite with `DATABASE_URL` set to a bogus Postgres
+   URL and unset entirely — both pass.
+
+4. **Nit — SQLAlchemy 2.0 cleanup — FIXED (all three).**
+   - `autocommit=False` confirmed to be dead weight: `sessionmaker.__init__`'s
+     real signature in SQLAlchemy 2.0.52 has no `autocommit` parameter
+     (verified via `inspect.signature`); it's swallowed into `**kw` and
+     forwarded to `Session()`, which also silently accepts and ignores it.
+     Removed from both call sites (`app/db/session.py`,
+     `tests/conftest.py`).
+   - `@pytest.fixture()` → `@pytest.fixture` in `conftest.py` (both
+     fixtures) — no-op parens removed.
+   - `get_db()` now returns `Iterator[Session]` instead of being untyped.
+   Full suite re-run after each change; all pass.
+
+5. **Info — `requires-python = ">=3.14"` — acknowledged, no code change.**
+   The reviewer's own wording already says this isn't a violation (the
+   spec's open question was human-confirmed to float with whatever
+   `.config/mise/config.toml` resolves to). I considered whether to add an
+   explicit onboarding note but decided against it: `.config/mise/config.toml`
+   already pins `python = "latest"`, and `AGENTS.md` already mandates that
+   global tool versions are "managed with `mise`... not installed
+   natively/locally" — so a dev following the project's own stated
+   convention gets 3.14 automatically via `mise install`/`mise use`, without
+   needing a separate note to tell them so. Adding one would duplicate
+   guidance that already exists rather than fill a gap. If the team wants a
+   sentence in `backend/README.md` pointing new contributors at `mise
+   install` specifically (there's no backend README today), that's a
+   product decision for the maintainer, not something I judged this review
+   finding to require.
