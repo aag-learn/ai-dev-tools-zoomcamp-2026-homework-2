@@ -1,3 +1,13 @@
+import os
+
+# app.db.session builds its module-level `engine` from `Settings().database_url`
+# at import time. Force a known value here, before that module is first
+# imported below, so the test suite is deterministic regardless of whatever
+# DATABASE_URL happens to be set in the ambient environment (e.g. a
+# developer's shell configured for Postgres) — tests always run against
+# SQLite, per _docs/testing-guidelines.md's isolated-database requirement.
+os.environ["DATABASE_URL"] = "sqlite:///./dev.db"
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
