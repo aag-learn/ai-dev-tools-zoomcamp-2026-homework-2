@@ -171,3 +171,38 @@ Verdict per finding:
    install` specifically (there's no backend README today), that's a
    product decision for the maintainer, not something I judged this review
    finding to require.
+
+## Defect found during qa-engineer re-verification (not one of the 5 PR review findings)
+
+After the 5 findings above were fixed and re-verified (all PASS), qa-engineer's
+re-check of AC15 (`.gitignore` correctness) surfaced a distinct, previously
+unflagged defect: 12 compiled `.pyc`/`__pycache__` files were already tracked
+in git/jj from the very first scaffold commit, despite `backend/.gitignore`
+listing both `__pycache__/` and `*.pyc`. A `.gitignore` pattern only stops
+*new* files from being tracked — it doesn't retroactively untrack files
+already committed before (or without) that pattern existing. Practical
+consequence qa-engineer reproduced: running `uv run pytest` or
+`uv run fastapi dev src/app/main.py` regenerates bytecode that differs
+byte-for-byte from what's committed, so `jj status`/`git status` reports
+those files as modified on every normal developer action.
+
+Fixed by confirming the exact tracked set (`jj file list -r @- backend | grep
+-i pycache`, 12 files: `backend/alembic/__pycache__/env.cpython-314.pyc`,
+`backend/src/app/__pycache__/{__init__,main}.cpython-314.pyc`,
+`backend/src/app/core/__pycache__/{__init__,config}.cpython-314.pyc`,
+`backend/src/app/db/__pycache__/{__init__,base,session}.cpython-314.pyc`,
+`backend/tests/__pycache__/{conftest,test_config,test_main,test_session}.cpython-314-pytest-9.1.1.pyc`),
+deleting them from the working copy (they're regenerated build artifacts,
+not source — jj has no separate git-rm/staging step, so deletion is how you
+stop tracking something going forward), and committing. `backend/.gitignore`
+already listed the correct patterns, so no `.gitignore` change was needed —
+only the previously-committed copies had to go.
+
+Verified the fix holds: ran `uv run pytest` (7 passed) and briefly booted
+`uv run fastapi dev src/app/main.py` (curl'd `/openapi.json`, got a 200,
+stopped the server) from `backend/` — the same two actions qa-engineer used
+to reproduce the problem — then checked `jj status`: "The working copy has
+no changes." Freshly regenerated `.pyc`/`__pycache__` files exist on disk
+(confirmed via `find`) but are correctly left untracked by `.gitignore` this
+time. Ran the full backend suite once more afterward to confirm no
+regression (still 7 passed, `jj status` still clean).
