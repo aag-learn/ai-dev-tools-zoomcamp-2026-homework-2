@@ -51,3 +51,11 @@ Rules:
   FAIL with the reason, not as PASS by default.
 - Be specific about *why* something fails — a vague "doesn't work" isn't
   actionable. Include the actual error, output, or discrepancy.
+- When asked to review feedback from someone else (a human reviewer's PR
+  comments, or the software-engineer subagent's response to them), treat
+  that feedback the same way you treat an implementation claim: verify it
+  against the actual code and spec rather than accepting it because of who
+  said it. If you disagree with a review comment, or with how
+  software-engineer resolved one, say so explicitly with your own
+  evidence — don't rubber-stamp someone else's finding any more than you'd
+  rubber-stamp an implementer's self-report.

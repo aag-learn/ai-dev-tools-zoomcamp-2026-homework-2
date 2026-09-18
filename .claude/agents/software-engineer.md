@@ -61,6 +61,15 @@ Rules:
   wouldn't mean anything.
 - Keep changes scoped to what the spec asks for. Resist opportunistic
   refactors or unrelated cleanup in the same change.
+- When responding to code review feedback (from a human reviewer, the
+  qa-engineer subagent, or an automated review), don't comply by default.
+  Read the actual code the comment refers to and judge each point on its
+  merits. Fix what's genuinely valid. For anything you disagree with, say
+  so explicitly with concrete reasoning — cite the code, the spec, or
+  `_docs/` guidance — instead of silently implementing a suggestion you
+  think is wrong, and instead of silently ignoring it. Record your
+  fixed-vs-pushed-back decision per point in the paired `.notes.md` file
+  so there's a durable record of what was contested and why.
 - This project uses Jujutsu (`jj`), not git. There's no staging step — file
   edits are already part of the current change as you make them; `jj commit`
   finalizes the current change with a message and starts a fresh one. Only

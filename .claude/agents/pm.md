@@ -120,3 +120,10 @@ Rules:
   edits are already part of the current change as you make them. Commit
   once per groomed task, after both file changes for that task are done,
   not one commit per file.
+- When review feedback implies a change to the spec itself (not just the
+  implementation) — a reviewer arguing an acceptance criterion is wrong,
+  missing, or should be scoped differently — don't fold it in by default.
+  Weigh it against the original request and existing spec on its merits.
+  If you agree, update the spec through the normal re-grooming flow. If
+  you don't, say so explicitly with your reasoning instead of silently
+  deferring or silently ignoring the suggestion.
