@@ -190,3 +190,53 @@ further adjustments were needed; the two features' MSW handlers and mock
 state don't interfere with each other (`resetPeopleStore` only resets the
 `people`/`nextPersonId` module state, `balances` is a separate constant
 array untouched by any handler).
+
+## Response to PR #23 review
+
+Reviewer's overall verdict was "safe to merge," no blocking items. Went
+through the three non-blocking notes on their merits:
+
+1. **`handlers.ts` conflict with PR #24 (#5 / Expense list view)** —
+   acknowledged, no action needed. This is a merge-sequencing concern
+   between two currently-open branches (#7 and #24), not something
+   fixable from inside #7's own diff right now: #24 doesn't exist in this
+   workspace to resolve a union against, and reshaping #7's handler in
+   anticipation of a not-yet-seen sibling branch would be guessing at its
+   shape. This is the same category of conflict #7 already hit for real
+   against #4/PR #21 (see "Rebase-conflict resolution" above) and
+   resolved by taking the union of both PRs' additions — the #7-vs-#24
+   conflict should resolve the same straightforward way (both are pure
+   additions to the same `handlers` array/file, not competing edits to
+   shared logic) whenever the orchestrator merges the second of the two.
+
+2. **Scope creep into #3's files (`client.ts` baseUrl, `setup.ts` listen
+   move)** — re-checked against the "Two pre-existing
+   test-infrastructure bugs fixed" section above and against the current
+   contents of both files. The reviewer's characterization ("justified,
+   documented... certain exceptions are fine") holds up on re-reading:
+   - `client.ts` still carries exactly the one documented change
+     (`baseUrl: window.location.origin`, falling back to `'/'`) plus the
+     pre-existing client setup — nothing else was touched. The change is
+     behavior-neutral in a real browser (same origin either way) and was
+     a necessary precondition for *any* view's tests to exercise a real
+     fetch call through MSW, not specific to Balances.
+   - `setup.ts` no longer even carries #7's original patch — it was
+     superseded during the #4 rebase by #4's strict-superset version
+     (the `AbsoluteURLRequest` shim + synchronous `server.listen()`,
+     confirmed present in the file as it stands today). Same underlying
+     bug, same "needed for any test file, not just this one" rationale.
+   Conclusion: no action needed. Both touches were minimal, additive,
+   necessary preconditions for #7's own acceptance criteria (AC13/14
+   need a working MSW-intercepted `GET /balances` call), not
+   opportunistic scope creep — the reviewer's own read agrees, and I
+   don't think it's actually wrong.
+
+3. **No CI on the repo** — acknowledged, no action needed. This is a
+   statement about the repository as a whole (no CI configured
+   anywhere), not something #7's diff could introduce or fix without
+   going well outside this issue's scope.
+
+No code changes resulted from this review pass — reverified locally with
+`npm test` (32/32 passing, 4 suites) and `npm run build` (exits 0,
+including `vue-tsc` type-checking), matching the reviewer's own local
+verification.
