@@ -318,3 +318,43 @@ convention each note gets a real decision, not a rubber stamp):
 4. **No CI on the repo** -- acknowledged, no action needed. This is
    about the repository as a whole, not something addressable within a
    single feature branch/PR.
+
+## Rebase-conflict resolution (post-hoc, after #7/PR #23 merged)
+
+Issue #5 was built in parallel with issue #7 ("Balances view UI",
+PR #23). Both branched off the same MSW scaffold state (post-#4), so
+rebasing `issue-5` onto `main` (after #23 merged) produced a conflict in
+exactly one file, matching what both PR #23's and PR #24's own reviews
+had already predicted -- see #7's own notes file
+(`specs/groomed/7-balances-view-ui.notes.md`, "Rebase-conflict
+resolution" section) for the earlier #4/#7 instance of this same
+pattern:
+
+- **`frontend/src/mocks/handlers.ts`**: #7 added the real
+  `GET /balances` handler (the `Balance` type import, the static
+  `balances` array), #5 added the real `GET /expenses` and
+  `DELETE /expenses/{expense_id}` handlers (the `Expense`/`Error` type
+  imports, the `initialExpenses` seed data, the mutable `expenses` store,
+  and `resetExpensesStore()`) -- both as pure additions to the same
+  `handlers` array/file that already carried #4's `people`-related
+  content, not competing edits to shared logic. Resolved by taking the
+  union: all three type-import groups (`Person`/`PersonCreate`,
+  `Balance`, `Expense`/`ErrorBody`), all three pieces of state
+  (`people`/`nextPersonId` + `resetPeopleStore()`, the static `balances`
+  array, and `initialExpenses`/`expenses` + `resetExpensesStore()`), and
+  all five routes (`GET`/`POST /people`, `GET /balances`,
+  `GET /expenses`, `DELETE /expenses/:expense_id`) registered together in
+  one `handlers` array.
+
+`jj resolve --list` confirmed this was the only conflicted file. After
+resolving it by hand and squashing the fix down into the "implement
+Expense list view" commit (the point the conflict was introduced --
+`jj squash --into <that commit>`, same approach as the earlier #4/#7
+resolution, so no commit in the `main..issue-5` range is left marked
+conflicted even though a later commit "fixes" it), `jj resolve --list -r
+main..issue-5` showed zero remaining conflicts across all four commits
+in the range. Ran `npm test` (47/47 passing across 5 suites) and `npm
+run build` (passes, including `vue-tsc` type-checking) from `frontend/`
+-- no further adjustments were needed; the two features' MSW handlers
+and mock stores coexist independently, exactly as both reviews had
+already verified.
