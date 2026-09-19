@@ -242,3 +242,79 @@ both buttons carry `md:h-[28px]`, `md:w-[28px]`, `lg:h-[30px]`, and
 assertion pattern as the existing truncation/padding tests. `npm test`
 -> 4 files, 37 tests, all passing (17 in `ExpensesView.test.ts`, up from
 16). `npm run build` -> exits 0.
+
+## Response to PR #24 review
+
+Human review on PR #24 verdict: "Safe to merge", four non-blocking
+notes. Went through each on its merits (no blocking issues, so no
+change was required to merge, but per the team's own review-response
+convention each note gets a real decision, not a rubber stamp):
+
+1. **`handlers.ts` conflict with PR #23** -- acknowledged, no action
+   needed here. This is a merge-sequencing question between two
+   already-open PRs (#24/#5 and #23/#7), the same shape as the earlier
+   #4/#7 `handlers.ts` conflict the orchestrator already resolved once.
+   The reviewer already verified the union resolves cleanly (47/47
+   tests + build). Nothing for this branch's code to change; flagging
+   here purely so the record shows it wasn't missed.
+
+2. **Mobile edit/delete buttons have no accessible name** --
+   deferred to #6, not fixed here. Re-checked my own reasoning from the
+   "Decisions / assumptions" section above and it still holds: the
+   spec's own "Open questions" confirmed default is "Per-row
+   `aria-label` scoped to desktop only, not tablet/mobile" (see
+   `5-expense-list-view.md`), so the mobile block correctly has no
+   `aria-label` per that confirmed default -- it's not an oversight,
+   it's the spec as written. The reviewer's phrasing ("worth a
+   deliberate follow-up in #6 rather than being forgotten") explicitly
+   frames this as *not* a request to fix it in #5; they're asking that
+   it not get silently dropped. I agree with deferring rather than
+   fixing now: changing the confirmed default here would contradict
+   this issue's own groomed spec without a corresponding spec update,
+   and #6 (the add/edit expense form issue) is a more natural place to
+   revisit per-row mobile control accessibility since it already touches
+   those same controls. **Flagging explicitly for #6**: mobile edit/delete
+   icon buttons in `ExpensesView.vue` currently render with no
+   accessible name at all (icon-only, no `aria-label`, no visible text)
+   -- worth deciding then whether to add mobile `aria-label`s or leave
+   as a permanent, spec-confirmed default.
+
+3. **Responsive padding override fragility** -- spot-checked, no
+   bug found, no code change. Built the frontend (`npm run build`) and
+   inspected `frontend/dist/assets/*.css` directly: `md:-mx-14`,
+   `md:-my-12`, `md:px-8`, `md:py-9` (wrapper) and `md:px-14`,
+   `md:pb-12` (parent `AppShell` `<main>`) all compile into the same
+   `@media (width>=48rem)` block; `lg:mx-0`, `lg:my-0`, `lg:px-0`,
+   `lg:py-0`, `lg:max-w-3xl` compile into the later `@media
+   (width>=64rem)` block -- same source-order-wins-the-tie mechanism
+   already verified for the icon-size fix above. Then drove a real
+   headless Chromium (Playwright, already cached locally at
+   `~/.cache/ms-playwright`; no new project dependency added) against
+   the built `dist/` output and read `getComputedStyle` on both `<main>`
+   and its child wrapper at both breakpoints:
+   - **Tablet (800px viewport)**: `main` computed padding 48px
+     top/bottom, 56px left/right; wrapper computed margin -48px
+     top/bottom, -56px left/right (exact cancellation) plus wrapper
+     padding 36px top/bottom, 32px left/right; wrapper `max-width:
+     none`. Net content padding = 36px vertical / 32px horizontal,
+     matching the spec's tablet target `py-9 px-8` (36px/32px) exactly,
+     with no max-width cap, as item 7 requires.
+   - **Desktop (1200px viewport)**: wrapper margin and padding both
+     reset to 0px (the `lg:` overrides win), so `main`'s own 48px/56px
+     padding shows through unmodified -- matching the spec's desktop
+     target `py-12 px-14` (48px/56px) exactly. Wrapper `max-width:
+     768px` (Tailwind's canonical `max-w-3xl`), consistent with the
+     spec's own "`max-w-3xl`-ish, ~820px" phrasing (768px chosen as
+     the nearest Tailwind utility, already documented above as a
+     deliberate approximation, not a new finding).
+
+   No residual offset at either breakpoint -- the negative-margin
+   cancellation nets out to precisely the spec's numbers, not just
+   approximately. Considering this verified; no code change made.
+   (Script used for the Playwright check was scratch/throwaway, not
+   committed -- it's a one-off measurement, not project test
+   infrastructure.)
+
+4. **No CI on the repo** -- acknowledged, no action needed. This is
+   about the repository as a whole, not something addressable within a
+   single feature branch/PR.
