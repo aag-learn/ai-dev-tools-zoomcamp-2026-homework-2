@@ -72,8 +72,11 @@ should start once #8 actually lands, not before.
      needs no `ALTER TABLE` and so needs no batch wrapper. Batch mode
      starts to matter once a migration alters an *existing* table (e.g. a
      future migration adding a column), not this one.
-5. A backend test file, `backend/tests/test_person_model.py`, using the
-   per-test isolated-database fixture from #8's `conftest.py`:
+5. A backend test file, `backend/tests/models/test_person_model.py`
+   (under a `tests/models/` subdirectory — see "Open questions" below for
+   why this location was chosen over this spec's original flat-file
+   default), using the per-test isolated-database fixture from #8's
+   `conftest.py`:
    - Asserts that inserting a `Person(name="Alice")` via a SQLAlchemy
      session persists it with an auto-assigned integer `id` and
      `name == "Alice"` after a commit + re-fetch.
@@ -134,7 +137,7 @@ should start once #8 actually lands, not before.
    committed.
 9. The `upgrade()` function of the new revision uses `op.create_table(...)`
    directly, not `op.batch_alter_table(...)`.
-10. `backend/tests/test_person_model.py` exists and contains the two
+10. `backend/tests/models/test_person_model.py` exists and contains the two
     assertions described in Scope item 5 (auto-assigned `id` +
     round-tripped `name`; duplicate names both persist without error).
 11. `cd backend && uv run pytest` runs the full suite (including the new
@@ -189,13 +192,19 @@ should start once #8 actually lands, not before.
 
 ## Open questions
 
-- **Test file location**: assumed `backend/tests/test_person_model.py` (a
-  flat file under `backend/tests/`, matching #8's `test_main.py` /
-  `test_config.py` naming), rather than a `backend/tests/models/` or
-  `backend/tests/unit/` subdirectory. Neither `_docs/testing-guidelines.md`
-  nor #8's spec establishes a subdirectory convention for model-level
-  tests (only `backend/tests/contract/` is named, for #14). Flag if a
-  `models/` test subdirectory is actually wanted before #10 adds a sibling
+- **Test file location — RESOLVED**: this spec's original default was a
+  flat `backend/tests/test_person_model.py` (matching #8's `test_main.py` /
+  `test_config.py` naming), since neither `_docs/testing-guidelines.md` nor
+  #8's spec established a subdirectory convention for model-level tests
+  (only `backend/tests/contract/` is named, for #14). Before implementation
+  started, the human maintainer overrode this default and chose a
+  `backend/tests/models/` subdirectory instead, anticipating #10's sibling
+  `test_expense_model.py`. The implementation (PR #22) used
+  `backend/tests/models/test_person_model.py` accordingly, and this
+  resolution is documented in
+  `specs/groomed/9-person-data-model-and-migration.notes.md` (not in this
+  section, which only records the original proposed default). #10's spec
+  follows the same `backend/tests/models/` convention for
   `test_expense_model.py`.
 - **Autogenerate vs. hand-written migration**: Scope item 4 allows either
   `alembic revision --autogenerate` or a hand-written migration file, as

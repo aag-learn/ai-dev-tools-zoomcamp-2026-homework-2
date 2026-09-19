@@ -21,10 +21,12 @@ implemented in this repo. This spec describes the target shape by reading
 those specs' content directly — `specs/groomed/1-define-openapi-contract.md`
 for the exact `Expense`/`ExpenseWrite` schema, `specs/groomed/8-scaffold-backend-project.md`
 for the `backend/src/app/{models,db,core}` layout and Alembic batch-mode
-setup, and `specs/groomed/9-person-data-model-and-migration.md` for the
-`people` table's exact shape (`id` integer PK, `name` `VARCHAR(100)`) and
-the test-file/migration conventions it settled on — it does not assume any
-of them is already running. Implementation of this issue should start once
+setup, `specs/groomed/9-person-data-model-and-migration.md` for the
+`people` table's exact shape (`id` integer PK, `name` `VARCHAR(100)`), and
+`specs/groomed/9-person-data-model-and-migration.notes.md` for the
+test-file convention #9 actually landed on (`backend/tests/models/`,
+overriding that spec's own original flat-file default) — it does not
+assume any of them is already running. Implementation of this issue should start once
 #9 actually lands, not before, since this migration's `down_revision`
 chains onto #9's revision.
 
@@ -135,11 +137,15 @@ chains onto #9's revision.
      batch mode (already configured globally in #8's `env.py`) is a
      workaround for SQLite's weak `ALTER TABLE` support, and creating
      brand-new tables needs no `ALTER TABLE`.
-5. A backend test file, `backend/tests/test_expense_model.py` (flat file
-   under `backend/tests/`, matching #9's `test_person_model.py`
-   convention — see #9's "Open questions" for why this location was
-   chosen over a `models/` subdirectory), using the per-test
-   isolated-database fixture from #8's `conftest.py`:
+5. A backend test file, `backend/tests/models/test_expense_model.py`
+   (under the `backend/tests/models/` subdirectory, matching #9's
+   `backend/tests/models/test_person_model.py` — the human maintainer
+   overrode #9's spec's original flat-file default before #9 was
+   implemented, specifically anticipating this sibling file; see #9's
+   implementation notes, `specs/groomed/9-person-data-model-and-migration.notes.md`,
+   for the resolution — #9's "Open questions" section only records the
+   spec's original proposed default, not the final decision), using the
+   per-test isolated-database fixture from #8's `conftest.py`:
    - Asserts that inserting an `Expense` with a `payer` (a `Person`) and
      two `participants` (two more `Person` rows, which may or may not
      include the payer) persists it with an auto-assigned integer `id`,
@@ -245,7 +251,7 @@ chains onto #9's revision.
     not committed.
 12. The new revision's `upgrade()` uses `op.create_table(...)` directly
     for both tables, not `op.batch_alter_table(...)`.
-13. `backend/tests/test_expense_model.py` exists and contains the four
+13. `backend/tests/models/test_expense_model.py` exists and contains the four
     assertions described in Scope item 5 (auto-assigned `id` + exact
     2-decimal `amount` round-trip; `payer`/`participants` relationship
     resolution; same person as both payer and participant; cascade
