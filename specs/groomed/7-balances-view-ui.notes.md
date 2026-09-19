@@ -1,0 +1,242 @@
+# Implementation notes — issue #7 (Balances view UI)
+
+## Summary of what was built
+
+- `frontend/src/views/BalancesView.vue` — real content, replacing the
+  issue #3 placeholder `<h1>`. Fetches `GET /balances` on mount via
+  `frontend/src/api/client.ts`, renders the header (h1 + subtitle gated
+  `hidden md:block`) and the balance list.
+- `frontend/src/components/BalanceRow.vue` — new subcomponent, one row
+  per balance. Props: `balance`, `barWidth`, `showStatus`, `size`
+  (`'desktop' | 'mobile'`). Owns all the per-row formatting logic (avatar
+  initial, status word, signed amount text/color, bar color).
+- `frontend/src/mocks/handlers.ts` — added the `GET /balances` handler,
+  typed against `schema.d.ts`, backed by a module-level array seeded with
+  the four `balances.html` sample values, independent of any other
+  issue's mock state.
+- `frontend/src/views/BalancesView.test.ts` — co-located Vitest suite
+  covering row order/formatting, bar-width fixtures (incl. the all-zero
+  case), the zero-balance "settled up" treatment, mobile-vs-desktop
+  status-word presence, the header's subtitle/no-button gating, the
+  empty-state row, and that only `GET /balances` is called on mount.
+
+## Two pre-existing test-infrastructure bugs fixed
+
+Both of these blocked *any* future frontend test from exercising a real
+`GET`/`POST` call through `client.ts` under MSW — not specific to this
+issue's screen — so I fixed them in the shared files rather than working
+around them locally. Flagging clearly since they touch files nominally
+owned by issue #3's scaffold, which issue #7's spec lists as out of scope:
+
+1. **`frontend/src/api/client.ts`**: `createClient({ baseUrl: '/' })`
+   fails under Vitest/JSDOM with `TypeError: Invalid URL` — Node's native
+   `fetch`/`Request` (unlike a real browser) requires an absolute URL and
+   won't resolve `'/balances'` against a page location. Changed `baseUrl`
+   to `window.location.origin` (falling back to `'/'` if `window` is
+   undefined). This resolves to the exact same effective URL in a real
+   browser (same-origin), so it's behavior-neutral for dev/prod — it only
+   fixes testability under Node.
+2. **`frontend/src/mocks/setup.ts`**: `server.listen()` was called inside
+   `beforeAll()`. `openapi-fetch`'s `createClient()` captures
+   `globalThis.fetch` once, into a closure, at module-evaluation time —
+   which happens when `client.ts` is imported (transitively, by every
+   view under test), and that import happens *before* `beforeAll` hooks
+   run. So MSW's patched `fetch` landed too late: `client.ts` had already
+   captured the original, unpatched `fetch`, and requests silently hit
+   the real network (`ECONNREFUSED`) instead of being intercepted. Moved
+   `server.listen()` to run synchronously at setup-file evaluation time
+   (still inside `setup.ts`, just not deferred into `beforeAll`), which
+   happens before any test file's own imports load. `afterEach`/`afterAll`
+   remain as hooks since ordering doesn't matter for those.
+
+I did not touch anything else in `client.ts`/`setup.ts` (routing,
+handlers array wiring, etc.) — both changes are minimal and additive.
+
+## Design decisions / assumptions
+
+- **Two separate row containers (desktop vs. mobile), not one row with a
+  CSS-hidden status word.** The spec's acceptance criterion 5 says the
+  status word must be "not rendered anywhere in the markup" at the mobile
+  breakpoint — a stronger claim than "hidden via CSS but still in the
+  DOM". Since JSDOM doesn't apply real CSS, a single shared row with
+  `hidden md:inline` on the status-word span would still have that text
+  present in the render tree in tests. I followed the same pattern
+  `AppShell.vue` already uses for the sidebar vs. tab bar (two full,
+  separately-gated blocks, both always in the DOM, `hidden md:flex` /
+  `md:hidden`) so that literal absence is genuinely checkable by scoping
+  a query to the mobile container. The header (h1/subtitle) uses the
+  single-shared-element-with-gating-class approach instead, per
+  criterion 9's weaker wording ("checkable by inspecting which responsive
+  classes gate each variant") — and because rendering the `<h1>` twice
+  would break the existing `frontend/tests/navigation.test.ts`, which
+  does `getByRole('heading', { level: 1, name: 'Balances' })` and expects
+  exactly one match.
+- **Font-size rounding** (design-system.md explicitly allows rounding to
+  the nearest stock Tailwind size rather than one-off arbitrary values):
+  name text is `text-sm` (14px) at both breakpoints — desktop's mockup
+  value (15px) sits exactly between `text-sm`/`text-base`, mobile's
+  mockup value already is 14px, so I used the same class for both rather
+  than introduce a delta the mockup doesn't have a natural stock-size
+  match for. Amount text is `text-base` (16px, exact match) on desktop
+  and `text-sm` (14px, rounded from the mockup's 15px) on mobile.
+  Avatar-initial text uses `text-sm` (14px, exact) on desktop and
+  `text-xs` (12px, rounded from the mockup's 13px) on mobile.
+- **Avatar size**: `h-9 w-9` (36px, exact) desktop, `h-8 w-8` (32px,
+  exact) mobile — both land exactly on stock Tailwind sizes, no rounding
+  needed.
+- **List/card container max-width**: applied `lg:max-w-xl` on
+  `BalancesView.vue`'s own content wrapper (not in `AppShell.vue`), so
+  the desktop-only cap (no cap at tablet width) is scoped to this view,
+  per Scope item 4. Outer page padding (`py-12`/`px-14` vs. tablet's
+  `px-8`) is already supplied globally by `AppShell.vue`'s `<main>` — I
+  did not duplicate or adjust that padding in `BalancesView.vue` itself,
+  reading Scope item 4's padding language as restating the existing
+  global page-padding token rather than asking for view-local padding on
+  top of it.
+- **Empty state**: one shared (non-breakpoint-split) row using the
+  "Empty list row" pattern from design-system.md, text taken verbatim
+  from the spec's Edge cases section: "No balances yet — add a person and
+  an expense to see balances."
+- **Zero-balance row**: implemented exactly as Scope item 10 describes —
+  "settled up", `$0.00` (no sign), `text-slate-500`, 0%-width bar.
+- **Minus sign**: used the literal U+2212 character (`−`) in the
+  template/component source, not an HTML entity or escape sequence,
+  matching the mockup's `&minus;` semantically.
+
+## Out of scope / not built
+
+Everything the spec's "Out of scope" section lists (settle-up, payment
+plan, edit/delete, tablet-specific mockup, `GET /people`/`GET /expenses`
+dependency, backend route, loading states, Pinia) — none of it was
+touched, matching the spec.
+
+## Test coverage mapping (acceptance criteria → test)
+
+All in `frontend/src/views/BalancesView.test.ts` unless noted:
+
+- AC2/3: "renders one row per balance, in the order returned..."
+- AC4: same test (sign/color assertions) + "renders a balance of 0..."
+- AC5: "renders the status word on desktop/tablet rows but never on
+  mobile rows"
+- AC6: "renders bar widths proportional to the largest magnitude on
+  screen" (58.40/-22.10/14.75/-51.05 fixture → 100/38/25/87)
+- AC7: "renders every bar at 0% width, with no division-by-zero error,
+  when every balance is 0"
+- AC8: "renders a balance of 0 as 'settled up', $0.00, in muted
+  slate-500 text"
+- AC9: "renders both the h1 and subtitle, gated so the subtitle is
+  desktop/tablet only, and no button anywhere in the header"
+- AC10: "renders no edit, delete, settle-up, or other actionable control
+  anywhere on the screen"
+- AC11: covered by `frontend/src/mocks/handlers.ts` itself (typed against
+  generated schema types) plus every test in the suite exercising it
+- AC12: all of the above, collectively
+- AC13: `npm test` and `npm run build` both verified to pass/exit 0
+  locally
+- AC14: "only calls GET /balances on mount, never GET /people or GET
+  /expenses"
+- AC1 (prerequisite gate): satisfied by inspection — `client.ts` and
+  `schema.d.ts` both already existed, so criteria 2-14 were implemented
+  in full rather than the "blocked" fallback.
+
+Edge case "empty group" (not a numbered acceptance criterion, but
+described in the spec's "Edge cases considered" section) is covered by
+"renders a muted empty-list row when GET /balances returns an empty
+array".
+
+## Things I did not do
+
+- Did not add a separate `BalanceRow.test.ts`; its behavior is fully
+  exercised through `BalancesView.test.ts` (the spec explicitly allows
+  "A Vitest test co-located with BalancesView.vue (or a subcomponent it
+  uses)").
+- Did not add any lint tooling/config — none exists in the repo yet and
+  none was requested.
+
+## Rebase-conflict resolution (post-hoc, after #4/PR #21 merged)
+
+Issue #7 was built in parallel with issue #4 ("People management UI",
+PR #21). Both branched off the same empty MSW scaffold, so rebasing
+`issue-7` onto `main` (after #21 merged) produced genuine conflicts in two
+files under `frontend/src/mocks/`, both resolved by hand:
+
+- **`handlers.ts`**: #4 added the real `GET`/`POST /people` handlers (plus
+  the in-memory `people` store and `resetPeopleStore()`), #7 added the real
+  `GET /balances` handler (plus the static `balances` array) — both as
+  additions to the same starting empty array, not competing edits to the
+  same logic. Resolved by taking the union: both type imports
+  (`Person`/`PersonCreate` and `Balance`), both pieces of state (the
+  `people`/`nextPersonId` store + `resetPeopleStore()`, and the static
+  `balances` array), and all three routes registered in one `handlers`
+  array.
+- **`setup.ts`**: both #4 and #7 independently fixed the same underlying
+  bug (MSW's fetch patch needs to happen synchronously before `beforeAll`,
+  or `openapi-fetch`'s client captures the unpatched `fetch` — see "Two
+  pre-existing test-infrastructure bugs fixed" above for #7's original
+  writeup of this). #4's version is a strict superset: same
+  synchronous-listen fix, plus an `AbsoluteURLRequest` shim working around
+  jsdom's `Request` requiring absolute URLs (a related but distinct
+  problem from #7's `client.ts` `baseUrl` fix above — #4 solves it at the
+  `Request`-construction layer instead). Resolved by dropping #7's
+  redundant synchronous-listen-only version entirely and taking #4's file
+  as-is, per the resolution PR #21's own review had already anticipated
+  for this exact conflict.
+
+After resolving both files and squashing into the implementation-notes
+commit, ran `npm test` (32/32 passing across all 4 suites, including
+`BalancesView.test.ts` and `PeopleView.test.ts` together) and `npm run
+build` (passes, including `vue-tsc` type-checking) from `frontend/` — no
+further adjustments were needed; the two features' MSW handlers and mock
+state don't interfere with each other (`resetPeopleStore` only resets the
+`people`/`nextPersonId` module state, `balances` is a separate constant
+array untouched by any handler).
+
+## Response to PR #23 review
+
+Reviewer's overall verdict was "safe to merge," no blocking items. Went
+through the three non-blocking notes on their merits:
+
+1. **`handlers.ts` conflict with PR #24 (#5 / Expense list view)** —
+   acknowledged, no action needed. This is a merge-sequencing concern
+   between two currently-open branches (#7 and #24), not something
+   fixable from inside #7's own diff right now: #24 doesn't exist in this
+   workspace to resolve a union against, and reshaping #7's handler in
+   anticipation of a not-yet-seen sibling branch would be guessing at its
+   shape. This is the same category of conflict #7 already hit for real
+   against #4/PR #21 (see "Rebase-conflict resolution" above) and
+   resolved by taking the union of both PRs' additions — the #7-vs-#24
+   conflict should resolve the same straightforward way (both are pure
+   additions to the same `handlers` array/file, not competing edits to
+   shared logic) whenever the orchestrator merges the second of the two.
+
+2. **Scope creep into #3's files (`client.ts` baseUrl, `setup.ts` listen
+   move)** — re-checked against the "Two pre-existing
+   test-infrastructure bugs fixed" section above and against the current
+   contents of both files. The reviewer's characterization ("justified,
+   documented... certain exceptions are fine") holds up on re-reading:
+   - `client.ts` still carries exactly the one documented change
+     (`baseUrl: window.location.origin`, falling back to `'/'`) plus the
+     pre-existing client setup — nothing else was touched. The change is
+     behavior-neutral in a real browser (same origin either way) and was
+     a necessary precondition for *any* view's tests to exercise a real
+     fetch call through MSW, not specific to Balances.
+   - `setup.ts` no longer even carries #7's original patch — it was
+     superseded during the #4 rebase by #4's strict-superset version
+     (the `AbsoluteURLRequest` shim + synchronous `server.listen()`,
+     confirmed present in the file as it stands today). Same underlying
+     bug, same "needed for any test file, not just this one" rationale.
+   Conclusion: no action needed. Both touches were minimal, additive,
+   necessary preconditions for #7's own acceptance criteria (AC13/14
+   need a working MSW-intercepted `GET /balances` call), not
+   opportunistic scope creep — the reviewer's own read agrees, and I
+   don't think it's actually wrong.
+
+3. **No CI on the repo** — acknowledged, no action needed. This is a
+   statement about the repository as a whole (no CI configured
+   anywhere), not something #7's diff could introduce or fix without
+   going well outside this issue's scope.
+
+No code changes resulted from this review pass — reverified locally with
+`npm test` (32/32 passing, 4 suites) and `npm run build` (exits 0,
+including `vue-tsc` type-checking), matching the reviewer's own local
+verification.
